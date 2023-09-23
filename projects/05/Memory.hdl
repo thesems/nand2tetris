@@ -27,5 +27,30 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    
+    // is ram?
+    Not(in=address[14], out=leadNeg);
+    And(a=leadNeg, b=true, out=ram);
+
+    // is keyboard?
+    And(a=address[14], b=address[13], out=key);
+
+    // is screen?
+    Not(in=key, out=notKey);
+    And(a=address[14], b=notKey, out=scr);
+
+    // should load?
+    And(a=ram, b=load, out=ramload);
+    And(a=scr, b=load, out=screenload);
+    
+    // components
+    RAM16K(in=in, load=ramload, address=address[0..13], out=ramout);
+    Screen(in=in, load=screenload, address=address[0..12], out=scrout);
+    Keyboard(out=keyout);
+
+    // 1st bit of ram or screen 
+    Mux(a=scr, b=false, sel=ram, out=ramOrScr);
+
+    // result
+    Mux4Way16(a=ramout, b=scrout, c=keyout, d=keyout, sel[0]=ramOrScr, sel[1]=key, out=out);
 }

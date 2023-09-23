@@ -39,5 +39,49 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+
+    // Load A register
+    Not(in=instruction[15], out=aInstr);    
+    Mux16(a=aluOut, b=instruction, sel=aInstr, out=aReg);
+
+    Or(a=aInstr, b=instruction[5], out=loadA);
+    ARegister(in=aReg, load=loadA, out=aRegOut, out[0..14]=addressM);
+
+    // is destination set?
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // should set D register?
+    And(a=instruction[15], b=instruction[4], out=loadD);
+    DRegister(in=aluOut, load=loadD, out=dRegOut);
+
+    // A register or inM?
+    And(a=instruction[15], b=instruction[12],out=AorM);
+    Mux16(a=aRegOut, b=inM, sel=AorM, out=aluIn);
+
+    ALU(x=dRegOut, y=aluIn, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluOut, out=outM, zr=zr, ng=ng);
+    
+    // start comparions for jump operations
+    Not(in=zr, out=notZr);
+    Not(in=ng, out=notNg);
+
+    And(a=zr, b=instruction[1], out=jeq); // jeq
+    And(a=ng, b=instruction[2], out=jlt); // jlt
+    Or(a=jeq, b=jlt, out=jle); // jle
+    Or(a=jeq, b=jgt, out=jge); // jge
+    And(a=notZr, out=jne); // jne
+
+    // is JGT?
+    And(a=notNg, b=notZr, out=isPos);
+    And(a=isPos, b=instruction[0], out=jgt);
+
+    // is JMP?
+    And(a=instruction[0], b=instruction[1], out=jmp1);
+    And(a=jmp1, b=instruction[2], out=jmp);
+
+    // should jump?
+    Or8Way(in[0]=jgt, in[1]=jeq, in[2]=jge, in[3]=jlt, in[4]=jne, in[5]=jle, out=isJump1);
+    And(a=instruction[15], b=isJump1, out=isJump);
+    Not(in=isJump, out=noJump);
+
+    PC(in=aRegOut, load=isJump, inc=noJump, reset=reset, out[0..14]=pc);
 }
