@@ -1,12 +1,5 @@
 use core::panic;
-use std::{
-    error::Error,
-    fs,
-    io::Write,
-    ops::Index,
-    os::{fd::AsFd, unix::process},
-    string,
-};
+use std::{error::Error, fs, io::Write, ops::Index};
 
 #[derive(PartialEq)]
 pub enum CommandType {
@@ -64,11 +57,11 @@ impl Parser {
     }
 
     pub fn advance(&mut self) {
-        self.current_command = String::from(self.lines.index(self.current_line_idx).as_str())
-            .trim()
-            .split(" ")
-            .map(|line| String::from(line))
-            .collect();
+        self.current_command =
+            String::from(self.lines.index(self.current_line_idx).as_str())
+                .split(" ")
+                .map(|line| String::from(line))
+                .collect();
 
         if self.current_command.is_empty() {
             panic!("current command cannot be empty!")
@@ -122,47 +115,84 @@ impl CodeWriter {
             .open(out_file)
             .unwrap();
 
-        return CodeWriter { file: file };
+        return CodeWriter { file };
     }
 
-    pub fn write_arithmetic(command: &str) {
+    pub fn write_arithmetic(&mut self, command: &str) {
         if command == "add" {
+            // SP--
+            write!(self.file, "@SP\nM=M-1\n").unwrap();
+            // D = RAM[SP]
+            write!(self.file, "@SP\nA=M\nD=M\n").unwrap();
+            // SP--
+            write!(self.file, "@SP\nM=M-1\n").unwrap();
+            // RAM[SP] = RAM[SP] + D
+            write!(self.file, "@SP\nA=M\nM=M+D\n").unwrap();
         } else if command == "sub" {
         } else {
         }
     }
 
     pub fn write_push_pop(&mut self, command_type: CommandType, segment: &str, index: u16) {
-        // push local
-        // load i => @i, D=A
-        // add to stack => @LCL, A=M, M=D
-        // increment stack => @SP, M=M+1
-
-        // pop local 5
-        // addr <- LCL + i ==> @LCL, A=M+i, D=A, @addr, M=D
-        // SP-- ==> @SP, M=M-1, @SP, D=M
-        // RAM[addr] <- RAM[SP] ==> @addr, M=D
-
+        let segment_pointer = match segment {
+            "constant" => "constant",
+            "local" => "LCL",
+            "argument" => "ARG",
+            "this" => "THIS",
+            "that" => "THAT",
+            _ => panic!("unknown segment label"),
+        };
         if command_type == CommandType::CPush {
-            self.file
-                .write_fmt(format_args!(
-                    "@{}\nD=A\n@{}\nA=M\nM=D\n@SP\nM=M+1\n",
-                    index, segment
-                ))
+            if segment_pointer == "constant" {
+                // D=i
+                write!(self.file, "@{}\nD=A\n", index).unwrap();
+                // RAM[SP] = D
+                write!(self.file, "@SP\nA=M\nM=D\n").unwrap();
+            } else {
+                // addr <- segment + i
+                write!(
+                    self.file,
+                    "@{}\nA=M+{}\nD=A\n@addr\nM=D\n",
+                    segment_pointer, index
+                )
                 .unwrap();
+                // RAM[SP] <- RAM[addr]
+                write!(self.file, "@SP\nA=M\n@addr\nM=D\n").unwrap();
+            }
+            // SP++
+            write!(self.file, "@SP\nM=M+1\n").unwrap();
+        } else if command_type == CommandType::CPop {
+            // addr <- segment + i
+            write!(
+                self.file,
+                "@{}\nA=M+{}\nD=A\n@addr\nM=D\n",
+                segment_pointer, index
+            )
+            .unwrap();
+            // SP--
+            write!(self.file, "@SP\nM=M-1\n").unwrap();
+            // RAM[addr] <- RAM[SP]
+            write!(self.file, "@SP\nD=M\n@addr\nM=D\n").unwrap();
         }
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::build(config.in_file.as_str()).unwrap();
-    let mut out_lines: Vec<String> = Vec::new();
+    let mut code_writer = CodeWriter::build(config.out_file.as_str());
 
     loop {
         if !parser.has_more_lines() {
             break;
         }
         parser.advance();
+
+        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop
+        {
+            code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
+        } else if parser.command_type() == CommandType::CArithmetic {
+            code_writer.write_arithmetic(parser.arg1().as_str());
+        }
     }
 
     Ok(())
