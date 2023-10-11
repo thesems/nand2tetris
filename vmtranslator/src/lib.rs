@@ -111,7 +111,8 @@ impl CodeWriter {
     pub fn build(out_file: &str) -> CodeWriter {
         let file = fs::OpenOptions::new()
             .write(true)
-            .append(true)
+            .truncate(true)
+            .create(true)
             .open(out_file)
             .unwrap();
 
@@ -187,8 +188,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         }
         parser.advance();
 
-        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop
-        {
+        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop {
             code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
         } else if parser.command_type() == CommandType::CArithmetic {
             code_writer.write_arithmetic(parser.arg1().as_str());
