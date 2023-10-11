@@ -57,11 +57,10 @@ impl Parser {
     }
 
     pub fn advance(&mut self) {
-        self.current_command =
-            String::from(self.lines.index(self.current_line_idx).as_str())
-                .split(" ")
-                .map(|line| String::from(line))
-                .collect();
+        self.current_command = String::from(self.lines.index(self.current_line_idx).as_str())
+            .split(" ")
+            .map(|line| String::from(line))
+            .collect();
 
         if self.current_command.is_empty() {
             panic!("current command cannot be empty!")
@@ -76,6 +75,14 @@ impl Parser {
             "push" => CommandType::CPush,
             "pop" => CommandType::CPop,
             "add" => CommandType::CArithmetic,
+            "sub" => CommandType::CArithmetic,
+            "neg" => CommandType::CArithmetic,
+            "eq" => CommandType::CArithmetic,
+            "gt" => CommandType::CArithmetic,
+            "lt" => CommandType::CArithmetic,
+            "and" => CommandType::CArithmetic,
+            "or" => CommandType::CArithmetic,
+            "not" => CommandType::CArithmetic,
             _ => panic!("invalid command type"),
         };
     }
@@ -106,6 +113,7 @@ impl Parser {
 
 pub struct CodeWriter {
     file: fs::File,
+    current_line: u16,
 }
 impl CodeWriter {
     pub fn build(out_file: &str) -> CodeWriter {
@@ -116,22 +124,92 @@ impl CodeWriter {
             .open(out_file)
             .unwrap();
 
-        return CodeWriter { file };
+        return CodeWriter {
+            file,
+            current_line: 0,
+        };
+    }
+
+    fn write_line(&mut self, line: &str) {
+        self.file.write(line.as_bytes()).unwrap();
+        self.current_line += 1;
     }
 
     pub fn write_arithmetic(&mut self, command: &str) {
-        if command == "add" {
-            // SP--
-            write!(self.file, "@SP\nM=M-1\n").unwrap();
-            // D = RAM[SP]
-            write!(self.file, "@SP\nA=M\nD=M\n").unwrap();
-            // SP--
-            write!(self.file, "@SP\nM=M-1\n").unwrap();
-            // RAM[SP] = RAM[SP] + D
-            write!(self.file, "@SP\nA=M\nM=M+D\n").unwrap();
-        } else if command == "sub" {
+        // SP--
+        self.write_line("@SP\n");
+        self.write_line("M=M-1\n");
+
+        // D = RAM[SP]
+        self.write_line("@SP\n");
+        self.write_line("A=M\n");
+        self.write_line("D=M\n");
+
+        if command == "neg" || command == "not" {
+            let cmd = match command {
+                "neg" => "-",
+                "not" => "!",
+                _ => panic!("not implemented"),
+            };
+            // RAM[SP] = -/! RAM[SP]
+            self.write_line(format!("M={}M\n", cmd).as_str());
         } else {
+            // SP--
+            self.write_line("@SP\n");
+            self.write_line("M=M-1\n");
+
+            if command == "add" || command == "sub" {
+                let cmd = match command {
+                    "add" => "+",
+                    "sub" => "-",
+                    _ => panic!("not implemented"),
+                };
+
+                // RAM[SP] = RAM[SP] +/- D
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line(format!("M=M{}D\n", cmd).as_str());
+            } else if command == "and" || command == "or" {
+                let cmd = match command {
+                    "and" => "&",
+                    "or" => "|",
+                    _ => panic!("not implemented"),
+                };
+
+                // RAM[SP] = RAM[SP] &/| D
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line(format!("M=M{}D\n", cmd).as_str());
+            } else if command == "eq" || command == "gt" || command == "lt" {
+                let cmd = match command {
+                    "eq" => "JEQ",
+                    "gt" => "JGT",
+                    "lt" => "JLT",
+                    _ => panic!("not implemented"),
+                };
+
+                // RAM[SP] = RAM[SP] - D
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line("M=M-D\n");
+
+                // @line_true, RAM[SP];JEQ/JGT/JLT
+                self.write_line(format!("@{}\n", self.current_line + 5).as_str());
+                self.write_line(format!("D;{}\n", cmd).as_str());
+
+                // RAM[SP] = 0, @line_skip_true, jump
+                self.write_line("M=0\n");
+                self.write_line(format!("@{}\n", self.current_line + 3).as_str());
+                self.write_line("0;JMP\n");
+
+                // RAM[SP] = 1
+                self.write_line("M=1\n");
+            }
         }
+
+        // SP++
+        self.write_line("@SP\n");
+        self.write_line("M=M+1\n");
     }
 
     pub fn write_push_pop(&mut self, command_type: CommandType, segment: &str, index: u16) {
@@ -146,34 +224,47 @@ impl CodeWriter {
         if command_type == CommandType::CPush {
             if segment_pointer == "constant" {
                 // D=i
-                write!(self.file, "@{}\nD=A\n", index).unwrap();
+                self.write_line(format!("@{}\n", index).as_str());
+                self.write_line("D=A\n");
+
                 // RAM[SP] = D
-                write!(self.file, "@SP\nA=M\nM=D\n").unwrap();
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line("M=D\n");
             } else {
                 // addr <- segment + i
-                write!(
-                    self.file,
-                    "@{}\nA=M+{}\nD=A\n@addr\nM=D\n",
-                    segment_pointer, index
-                )
-                .unwrap();
+                self.write_line(format!("@{}\n", segment_pointer).as_str());
+                self.write_line(format!("A=M+{}\n", index).as_str());
+                self.write_line("D=A\n");
+                self.write_line("@addr\n");
+                self.write_line("M=D\n");
+
                 // RAM[SP] <- RAM[addr]
-                write!(self.file, "@SP\nA=M\n@addr\nM=D\n").unwrap();
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line("@addr\n");
+                self.write_line("M=D\n");
             }
             // SP++
-            write!(self.file, "@SP\nM=M+1\n").unwrap();
+            self.write_line("@SP\n");
+            self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
             // addr <- segment + i
-            write!(
-                self.file,
-                "@{}\nA=M+{}\nD=A\n@addr\nM=D\n",
-                segment_pointer, index
-            )
-            .unwrap();
+            self.write_line(format!("@{}\n", segment_pointer).as_str());
+            self.write_line(format!("A=M+{}\n", index).as_str());
+            self.write_line("D=A\n");
+            self.write_line("@addr\n");
+            self.write_line("M=D\n");
+
             // SP--
-            write!(self.file, "@SP\nM=M-1\n").unwrap();
+            self.write_line("@SP\n");
+            self.write_line("M=M-1\n");
+
             // RAM[addr] <- RAM[SP]
-            write!(self.file, "@SP\nD=M\n@addr\nM=D\n").unwrap();
+            self.write_line("@SP\n");
+            self.write_line("D=M\n");
+            self.write_line("@addr\n");
+            self.write_line("M=D\n");
         }
     }
 }
@@ -188,7 +279,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         }
         parser.advance();
 
-        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop {
+        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop
+        {
             code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
         } else if parser.command_type() == CommandType::CArithmetic {
             code_writer.write_arithmetic(parser.arg1().as_str());
