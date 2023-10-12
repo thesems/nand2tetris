@@ -191,19 +191,23 @@ impl CodeWriter {
                 // RAM[SP] = RAM[SP] - D
                 self.write_line("@SP\n");
                 self.write_line("A=M\n");
-                self.write_line("M=M-D\n");
+                self.write_line("D=M-D\n");
 
                 // @line_true, RAM[SP];JEQ/JGT/JLT
-                self.write_line(format!("@{}\n", self.current_line + 5).as_str());
+                self.write_line(format!("@{}\n", self.current_line + 7).as_str());
                 self.write_line(format!("D;{}\n", cmd).as_str());
 
                 // RAM[SP] = 0, @line_skip_true, jump
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
                 self.write_line("M=0\n");
-                self.write_line(format!("@{}\n", self.current_line + 3).as_str());
+                self.write_line(format!("@{}\n", self.current_line + 5).as_str());
                 self.write_line("0;JMP\n");
 
                 // RAM[SP] = 1
-                self.write_line("M=1\n");
+                self.write_line("@SP\n");
+                self.write_line("A=M\n");
+                self.write_line("M=-1\n");
             }
         }
 
