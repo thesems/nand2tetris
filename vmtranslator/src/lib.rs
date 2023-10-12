@@ -223,6 +223,7 @@ impl CodeWriter {
             "argument" => "ARG",
             "this" => "THIS",
             "that" => "THAT",
+            "temp" => "temp",
             _ => panic!("unknown segment label"),
         };
         if command_type == CommandType::CPush {
@@ -236,29 +237,51 @@ impl CodeWriter {
                 self.write_line("A=M\n");
                 self.write_line("M=D\n");
             } else {
-                // addr <- segment + i
-                self.write_line(format!("@{}\n", segment_pointer).as_str());
-                self.write_line(format!("A=M+{}\n", index).as_str());
-                self.write_line("D=A\n");
-                self.write_line("@addr\n");
-                self.write_line("M=D\n");
+                if segment_pointer == "temp" {
+                    // addr <- temp + i
+                    self.write_line(format!("@{}\n", 5 + index).as_str());
+                    self.write_line("D=M\n");
+                } else {
+                    // addr <- segmentPointer + i
+                    self.write_line(format!("@{}\n", index).as_str());
+                    self.write_line("D=A\n");
 
+                    // @segmentPointer
+                    self.write_line(format!("@{}\n", segment_pointer).as_str());
+
+                    // addr <- M[segmentPointer + i]
+                    self.write_line("A=M+D\n");
+                    self.write_line("D=M\n");
+                }
+               
                 // RAM[SP] <- RAM[addr]
                 self.write_line("@SP\n");
                 self.write_line("A=M\n");
-                self.write_line("@addr\n");
                 self.write_line("M=D\n");
             }
             // SP++
             self.write_line("@SP\n");
             self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
-            // addr <- segment + i
-            self.write_line(format!("@{}\n", segment_pointer).as_str());
-            self.write_line(format!("A=M+{}\n", index).as_str());
-            self.write_line("D=A\n");
-            self.write_line("@addr\n");
-            self.write_line("M=D\n");
+            if segment_pointer == "temp" {
+                // addr <- temp + i
+                self.write_line(format!("@{}\n", 5 + index).as_str());
+                self.write_line("D=A\n");
+                self.write_line("@addr\n");
+                self.write_line("M=D\n");
+            } else {
+                // addr <- segmentPointer + i
+                self.write_line(format!("@{}\n", index).as_str());
+                self.write_line("D=A\n");
+
+                // @segmentPointer
+                self.write_line(format!("@{}\n", segment_pointer).as_str());
+
+                // addr <- M + D
+                self.write_line("D=M+D\n");
+                self.write_line("@addr\n");
+                self.write_line("M=D\n");
+            }
 
             // SP--
             self.write_line("@SP\n");
@@ -266,8 +289,10 @@ impl CodeWriter {
 
             // RAM[addr] <- RAM[SP]
             self.write_line("@SP\n");
+            self.write_line("A=M\n");
             self.write_line("D=M\n");
             self.write_line("@addr\n");
+            self.write_line("A=M\n");
             self.write_line("M=D\n");
         }
     }
@@ -276,6 +301,24 @@ impl CodeWriter {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::build(config.in_file.as_str()).unwrap();
     let mut code_writer = CodeWriter::build(config.out_file.as_str());
+
+    // // RAM[SP] = 256
+    // code_writer.write_line("@256\n");
+    // code_writer.write_line("D=A\n");
+    // code_writer.write_line("@0\n");
+    // code_writer.write_line("M=D\n");
+    //
+    // // RAM[LCL] = 300
+    // code_writer.write_line("@300\n");
+    // code_writer.write_line("D=A\n");
+    // code_writer.write_line("@1\n");
+    // code_writer.write_line("M=D\n");
+    // 
+    // // RAM[ARG] = 310
+    // code_writer.write_line("@310\n");
+    // code_writer.write_line("D=A\n");
+    // code_writer.write_line("@2\n");
+    // code_writer.write_line("M=D\n");
 
     loop {
         if !parser.has_more_lines() {
