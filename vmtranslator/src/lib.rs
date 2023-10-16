@@ -225,6 +225,7 @@ impl CodeWriter {
             "that" => "THAT",
             "temp" => "temp",
             "static" => "static",
+            "pointer" => "pointer",
             _ => panic!("unknown segment label"),
         };
         if command_type == CommandType::CPush {
@@ -238,14 +239,25 @@ impl CodeWriter {
                 self.write_line("A=M\n");
                 self.write_line("M=D\n");
             } else {
-                if segment_pointer == "temp" || segment_pointer == "static" {
-                    let idx = match segment_pointer {
-                        "temp" => 5,
-                        "static" => 16,
+                if segment_pointer == "temp"
+                    || segment_pointer == "static"
+                    || segment_pointer == "pointer"
+                {
+                    let segment = match segment_pointer {
+                        "temp" => format!("{}", 5 + index),
+                        "static" => format!("{}", 16 + index),
+                        "pointer" => {
+                            if index == 0 {
+                                String::from("THIS")
+                            } else {
+                                String::from("THAT")
+                            }
+                        }
                         _ => panic!("should not happen!"),
                     };
+
                     // addr <- temp/static + i
-                    self.write_line(format!("@{}\n", idx + index).as_str());
+                    self.write_line(format!("@{}\n", segment).as_str());
                     self.write_line("D=M\n");
                 } else {
                     // addr <- segmentPointer + i
@@ -269,14 +281,23 @@ impl CodeWriter {
             self.write_line("@SP\n");
             self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
-            if segment_pointer == "temp" || segment_pointer == "static" {
+            if segment_pointer == "temp" || segment_pointer == "static" || segment_pointer == "pointer" {
                 // addr <- temp/static + i
-                let idx = match segment_pointer {
-                    "temp" => 5,
-                    "static" => 16,
+                let segment = match segment_pointer {
+                    "temp" => format!("{}", 5 + index),
+                    "static" => format!("{}", 16 + index),
+                    "pointer" => {
+                        if index == 0 {
+                            String::from("THIS")
+                        } else {
+                            String::from("THAT")
+                        }
+                    }
                     _ => panic!("should not happen!"),
                 };
-                self.write_line(format!("@{}\n", idx + index).as_str());
+
+                // addr <- temp/static + i
+                self.write_line(format!("@{}\n", segment).as_str());
                 self.write_line("D=A\n");
                 self.write_line("@addr\n");
                 self.write_line("M=D\n");
