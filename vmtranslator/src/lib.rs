@@ -224,6 +224,7 @@ impl CodeWriter {
             "this" => "THIS",
             "that" => "THAT",
             "temp" => "temp",
+            "static" => "static",
             _ => panic!("unknown segment label"),
         };
         if command_type == CommandType::CPush {
@@ -237,9 +238,14 @@ impl CodeWriter {
                 self.write_line("A=M\n");
                 self.write_line("M=D\n");
             } else {
-                if segment_pointer == "temp" {
-                    // addr <- temp + i
-                    self.write_line(format!("@{}\n", 5 + index).as_str());
+                if segment_pointer == "temp" || segment_pointer == "static" {
+                    let idx = match segment_pointer {
+                        "temp" => 5,
+                        "static" => 16,
+                        _ => panic!("should not happen!"),
+                    };
+                    // addr <- temp/static + i
+                    self.write_line(format!("@{}\n", idx + index).as_str());
                     self.write_line("D=M\n");
                 } else {
                     // addr <- segmentPointer + i
@@ -253,7 +259,7 @@ impl CodeWriter {
                     self.write_line("A=M+D\n");
                     self.write_line("D=M\n");
                 }
-               
+
                 // RAM[SP] <- RAM[addr]
                 self.write_line("@SP\n");
                 self.write_line("A=M\n");
@@ -263,9 +269,14 @@ impl CodeWriter {
             self.write_line("@SP\n");
             self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
-            if segment_pointer == "temp" {
-                // addr <- temp + i
-                self.write_line(format!("@{}\n", 5 + index).as_str());
+            if segment_pointer == "temp" || segment_pointer == "static" {
+                // addr <- temp/static + i
+                let idx = match segment_pointer {
+                    "temp" => 5,
+                    "static" => 16,
+                    _ => panic!("should not happen!"),
+                };
+                self.write_line(format!("@{}\n", idx + index).as_str());
                 self.write_line("D=A\n");
                 self.write_line("@addr\n");
                 self.write_line("M=D\n");
@@ -313,7 +324,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     // code_writer.write_line("D=A\n");
     // code_writer.write_line("@1\n");
     // code_writer.write_line("M=D\n");
-    // 
+    //
     // // RAM[ARG] = 310
     // code_writer.write_line("@310\n");
     // code_writer.write_line("D=A\n");
