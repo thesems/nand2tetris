@@ -66,7 +66,6 @@ impl Parser {
             panic!("current command cannot be empty!")
         }
 
-        println!("{:?}", self.current_command);
         self.current_line_idx += 1;
     }
 
@@ -256,23 +255,23 @@ impl CodeWriter {
                         _ => panic!("should not happen!"),
                     };
 
-                    // addr <- temp/static + i
+                    // D <- temp/static + i
                     self.write_line(format!("@{}\n", segment).as_str());
                     self.write_line("D=M\n");
                 } else {
-                    // addr <- segmentPointer + i
+                    // D <- segmentPointer + i
                     self.write_line(format!("@{}\n", index).as_str());
                     self.write_line("D=A\n");
 
                     // @segmentPointer
                     self.write_line(format!("@{}\n", segment_pointer).as_str());
 
-                    // addr <- M[segmentPointer + i]
+                    // D <- M[segmentPointer + i]
                     self.write_line("A=M+D\n");
                     self.write_line("D=M\n");
                 }
 
-                // RAM[SP] <- RAM[addr]
+                // RAM[SP] <- RAM[D]
                 self.write_line("@SP\n");
                 self.write_line("A=M\n");
                 self.write_line("M=D\n");
@@ -299,7 +298,7 @@ impl CodeWriter {
                 // addr <- temp/static + i
                 self.write_line(format!("@{}\n", segment).as_str());
                 self.write_line("D=A\n");
-                self.write_line("@addr\n");
+                self.write_line("@13\n");
                 self.write_line("M=D\n");
             } else {
                 // addr <- segmentPointer + i
@@ -311,7 +310,7 @@ impl CodeWriter {
 
                 // addr <- M + D
                 self.write_line("D=M+D\n");
-                self.write_line("@addr\n");
+                self.write_line("@13\n");
                 self.write_line("M=D\n");
             }
 
@@ -323,7 +322,7 @@ impl CodeWriter {
             self.write_line("@SP\n");
             self.write_line("A=M\n");
             self.write_line("D=M\n");
-            self.write_line("@addr\n");
+            self.write_line("@13\n");
             self.write_line("A=M\n");
             self.write_line("M=D\n");
         }
