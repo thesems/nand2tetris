@@ -59,7 +59,7 @@ impl Parser {
     pub fn advance(&mut self) {
         self.current_command = String::from(self.lines.index(self.current_line_idx).as_str())
             .split(" ")
-            .map(|line| String::from(line))
+            .map(|line| String::from(line.trim()))
             .collect();
 
         if self.current_command.is_empty() {
@@ -82,6 +82,9 @@ impl Parser {
             "and" => CommandType::CArithmetic,
             "or" => CommandType::CArithmetic,
             "not" => CommandType::CArithmetic,
+            "label" => CommandType::CLabel,
+            "if-goto" => CommandType::CIf,
+            "goto" => CommandType::CGoto,
             _ => panic!("invalid command type"),
         };
     }
@@ -101,10 +104,12 @@ impl Parser {
             && command_type != CommandType::CPop
             && command_type != CommandType::CFunction
             && command_type != CommandType::CCall
+            && command_type != CommandType::CLabel
+            && command_type != CommandType::CIf
+            && command_type != CommandType::CGoto
         {
             panic!("arg2 should not be called on operations other than: cpush, cpop, cfunction, ccall!")
         }
-
         let arg: u16 = self.current_command[2].parse().unwrap();
         return arg;
     }
@@ -203,7 +208,7 @@ impl CodeWriter {
                 self.write_line(format!("@{}\n", self.current_line + 5).as_str());
                 self.write_line("0;JMP\n");
 
-                // RAM[SP] = 1
+                // RAM[SP] = -1
                 self.write_line("@SP\n");
                 self.write_line("A=M\n");
                 self.write_line("M=-1\n");
@@ -327,6 +332,34 @@ impl CodeWriter {
             self.write_line("M=D\n");
         }
     }
+
+    pub fn set_file_name(&self, file_name: &str) {}
+    pub fn write_init(&self) {}
+    
+    pub fn write_label(&mut self, label: &str) {
+        self.write_line(format!("({})\n", label).as_str());
+    }
+    
+    pub fn write_goto(&mut self, label: &str) {
+        self.write_line(format!("@{}\n", label).as_str());
+        self.write_line("0;JMP\n");
+    }
+
+    pub fn write_if(&mut self, label: &str) {
+        // SP--
+        self.write_line("@SP\n");
+        self.write_line("M=M-1\n");
+        // D = RAM[SP]
+        self.write_line("A=M\n");
+        self.write_line("D=M\n");
+        // if D != 0 then jump 
+        self.write_line(format!("@{}\n", label).as_str());
+        self.write_line("D;JNE\n");
+    }
+
+    pub fn write_function(&self, function_name: &str, num_args: i32) {}
+    pub fn write_call(&self, function_name: &str, num_args: i32) {}
+    pub fn write_return(&self) {}
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
@@ -362,6 +395,14 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
         } else if parser.command_type() == CommandType::CArithmetic {
             code_writer.write_arithmetic(parser.arg1().as_str());
+        } else if parser.command_type() == CommandType::CLabel {
+            code_writer.write_label(parser.arg1().as_str());
+        } else if parser.command_type() == CommandType::CIf {
+            code_writer.write_if(parser.arg1().as_str());
+        } else if parser.command_type() == CommandType::CGoto {
+            code_writer.write_goto(parser.arg1().as_str());
+        } else {
+            panic!("not implemented yet!");
         }
     }
 
