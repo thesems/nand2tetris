@@ -85,6 +85,9 @@ impl Parser {
             "label" => CommandType::CLabel,
             "if-goto" => CommandType::CIf,
             "goto" => CommandType::CGoto,
+            "function" => CommandType::CFunction,
+            "call" => CommandType::CCall,
+            "return" => CommandType::CReturn,
             _ => panic!("invalid command type"),
         };
     }
@@ -357,8 +360,8 @@ impl CodeWriter {
         self.write_line("D;JNE\n");
     }
 
-    pub fn write_function(&self, function_name: &str, num_args: i32) {}
-    pub fn write_call(&self, function_name: &str, num_args: i32) {}
+    pub fn write_function(&self, function_name: &str, num_args: u16) {}
+    pub fn write_call(&self, function_name: &str, num_args: u16) {}
     pub fn write_return(&self) {}
 }
 
@@ -401,6 +404,12 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             code_writer.write_if(parser.arg1().as_str());
         } else if parser.command_type() == CommandType::CGoto {
             code_writer.write_goto(parser.arg1().as_str());
+        } else if parser.command_type() == CommandType::CFunction {
+            code_writer.write_function(parser.arg1().as_str(), parser.arg2());
+        } else if parser.command_type() == CommandType::CReturn {
+            code_writer.write_return();
+        } else if parser.command_type() == CommandType::CCall {
+            code_writer.write_call(parser.arg1().as_str(), parser.arg2());
         } else {
             panic!("not implemented yet!");
         }
