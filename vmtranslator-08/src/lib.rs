@@ -288,7 +288,10 @@ impl CodeWriter {
             self.write_line("@SP\n");
             self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
-            if segment_pointer == "temp" || segment_pointer == "static" || segment_pointer == "pointer" {
+            if segment_pointer == "temp"
+                || segment_pointer == "static"
+                || segment_pointer == "pointer"
+            {
                 // addr <- temp/static + i
                 let segment = match segment_pointer {
                     "temp" => format!("{}", 5 + index),
@@ -338,11 +341,11 @@ impl CodeWriter {
 
     pub fn set_file_name(&self, file_name: &str) {}
     pub fn write_init(&self) {}
-    
+
     pub fn write_label(&mut self, label: &str) {
         self.write_line(format!("({})\n", label).as_str());
     }
-    
+
     pub fn write_goto(&mut self, label: &str) {
         self.write_line(format!("@{}\n", label).as_str());
         self.write_line("0;JMP\n");
@@ -355,14 +358,137 @@ impl CodeWriter {
         // D = RAM[SP]
         self.write_line("A=M\n");
         self.write_line("D=M\n");
-        // if D != 0 then jump 
+        // if D != 0 then jump
         self.write_line(format!("@{}\n", label).as_str());
         self.write_line("D;JNE\n");
     }
 
-    pub fn write_function(&self, function_name: &str, num_args: u16) {}
-    pub fn write_call(&self, function_name: &str, num_args: u16) {}
-    pub fn write_return(&self) {}
+    pub fn write_function(&mut self, function_name: &str, num_args: u16) {
+        // TODO: fix me by adding a counter
+        self.write_line(format!("({}${})\n", function_name, 0).as_str());
+
+        let mut i = 0;
+        while i < num_args {
+            self.write_line("@SP\n");
+            self.write_line("A=M\n");
+            self.write_line("M=0\n");
+            self.write_line("@SP\n");
+            self.write_line("M=M-1\n");
+            i += 1;
+        }
+    }
+
+    pub fn write_call(&mut self, function_name: &str, num_args: u16) {
+        // Define label for return address
+        let label = ""; // TODO: randomly generate a variable name?
+
+        // Push return address
+        self.write_line("@SP\n");
+        self.write_line("A=M\n");
+        self.write_line("M=X\n"); // change X to return address
+
+        // Increment stack
+        self.write_line("@SP\n");
+        self.write_line("M=M+1\n");
+
+        // Push pointers
+        let mut save_pointers = vec!["THAT", "THIS", "ARG", "LCL"];
+        while let Some(pointer) = save_pointers.pop() {
+            // Push LCL
+            self.write_line(format!("@{}\n", pointer).as_str());
+            self.write_line("D=M\n");
+            self.write_line("@SP\n");
+            self.write_line("M=D\n");
+
+            // Increment stack
+            self.write_line("@SP\n");
+            self.write_line("M=M+1\n");
+        }
+
+        // Reposition ARG pointer
+        // ARG = SP
+        self.write_line("@SP\n");
+        self.write_line("D=A\n");
+        self.write_line("@ARG\n");
+        self.write_line("M=D\n");
+
+        // ARG -= 5
+        self.write_line("@5\n");
+        self.write_line("D=A\n");
+        self.write_line("@ARG\n");
+        self.write_line("M=M-D\n");
+
+        // ARG -= num_args
+        self.write_line(format!("@{}\n", num_args).as_str());
+        self.write_line("D=A\n");
+        self.write_line("@ARG\n");
+        self.write_line("M=M-D\n");
+
+        // LCL = SP
+        self.write_line("@SP\n");
+        self.write_line("D=A\n");
+        self.write_line("@LCL\n");
+        self.write_line("M=D\n");
+
+        // Goto function
+        self.write_line(format!("@{}\n", function_name).as_str());
+        self.write_line("0;JMP\n");
+
+        // Define label (e.g. Foo$ret.1)
+        self.write_line(format!("({})\n", label).as_str());
+    }
+
+    pub fn write_return(&mut self) {
+        // TODO: perhaps use @13 (general purpose registers) instead of @endFrame
+
+        // endFrame = LCL
+        self.write_line("@LCL\n");
+        self.write_line("D=M\n");
+        self.write_line("@endFrame\n");
+        self.write_line("M=D\n");
+
+        // retAddr = *(endFrame - 5)
+        self.write_line("@5\n");
+        self.write_line("D=A\n");
+        self.write_line("@endFrame\n");
+        self.write_line("D=A-D\n");
+        self.write_line("M=A\n");
+        self.write_line("D=M\n");
+        self.write_line("@retAddr\n");
+        self.write_line("M=D\n");
+
+        // *ARG = pop()
+        self.write_line("@SP\n");
+        self.write_line("D=M-1\n");
+        self.write_line("@ARG\n");
+        self.write_line("A=M\n");
+        self.write_line("M=D\n");
+
+        // SP = ARG + 1
+        self.write_line("@ARG\n");
+        self.write_line("D=A\n");
+        self.write_line("@SP\n");
+        self.write_line("M=D+1\n");
+
+        let pointers = vec!["THAT", "THIS", "ARG", "LCL"];
+        let mut i = 1;
+        while i < 5 {
+            // SEGMENT = *(endFrame - 1)
+            self.write_line(format!("@{}\n", i).as_str());
+            self.write_line("D=A\n");
+            self.write_line("@endFrame\n");
+            self.write_line("D=A-D\n");
+            self.write_line("M=A\n");
+            self.write_line("D=M\n");
+            self.write_line(format!("@{}\n", pointers[i-1]).as_str());
+            self.write_line("M=D\n");
+            i += 1
+        }
+
+        // Jump to return address
+        self.write_line("A=D\n");
+        self.write_line("0;JMP\n");
+    }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
