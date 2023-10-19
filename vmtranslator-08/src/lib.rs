@@ -44,8 +44,15 @@ impl Parser {
         return Ok(Parser {
             lines: lines
                 .into_iter()
-                .map(|line| String::from(line.trim()))
+                .map(|line| line.trim())
                 .filter(|line| !line.starts_with("//") && !line.is_empty())
+                .map(|line| {
+                    let res = line.find("//");
+                    match res {
+                        Some(idx) => String::from(line.trim().split_at(idx).0),
+                        None => String::from(line.trim()),
+                    }
+                })
                 .collect(),
             current_command: Vec::new(),
             current_line_idx: 0,
@@ -88,7 +95,7 @@ impl Parser {
             "function" => CommandType::CFunction,
             "call" => CommandType::CCall,
             "return" => CommandType::CReturn,
-            _ => panic!("invalid command type"),
+            _ => panic!("invalid command type {}.", self.current_command[0].as_str()),
         };
     }
 
@@ -121,6 +128,7 @@ impl Parser {
 pub struct CodeWriter {
     file: fs::File,
     current_line: u16,
+    current_file_name: String,
 }
 impl CodeWriter {
     pub fn build(out_file: &str) -> CodeWriter {
@@ -134,7 +142,12 @@ impl CodeWriter {
         return CodeWriter {
             file,
             current_line: 0,
+            current_file_name: "".to_string(),
         };
+    }
+
+    pub fn set_file_name(&mut self, file_name: &str) {
+        self.current_file_name = file_name.to_string();
     }
 
     fn write_line(&mut self, line: &str) {
@@ -339,7 +352,6 @@ impl CodeWriter {
         }
     }
 
-    pub fn set_file_name(&self, file_name: &str) {}
     pub fn write_init(&self) {}
 
     pub fn write_label(&mut self, label: &str) {
@@ -364,8 +376,7 @@ impl CodeWriter {
     }
 
     pub fn write_function(&mut self, function_name: &str, num_args: u16) {
-        // TODO: fix me by adding a counter
-        self.write_line(format!("({}${})\n", function_name, 0).as_str());
+        self.write_line(format!("({})\n", function_name).as_str());
 
         let mut i = 0;
         while i < num_args {
@@ -373,19 +384,21 @@ impl CodeWriter {
             self.write_line("A=M\n");
             self.write_line("M=0\n");
             self.write_line("@SP\n");
-            self.write_line("M=M-1\n");
+            self.write_line("M=M+1\n");
             i += 1;
         }
     }
 
     pub fn write_call(&mut self, function_name: &str, num_args: u16) {
         // Define label for return address
-        let label = ""; // TODO: randomly generate a variable name?
+        let label = "xyz"; // TODO: randomly generate a variable name?
 
         // Push return address
+        self.write_line(format!("@{}${}\n", function_name, label).as_str());
+        self.write_line("D=A\n");
         self.write_line("@SP\n");
         self.write_line("A=M\n");
-        self.write_line("M=X\n"); // change X to return address
+        self.write_line("M=D\n"); // change X to return address
 
         // Increment stack
         self.write_line("@SP\n");
@@ -435,7 +448,7 @@ impl CodeWriter {
         self.write_line("0;JMP\n");
 
         // Define label (e.g. Foo$ret.1)
-        self.write_line(format!("({})\n", label).as_str());
+        self.write_line(format!("({}{})\n", function_name, label).as_str());
     }
 
     pub fn write_return(&mut self) {
@@ -451,22 +464,23 @@ impl CodeWriter {
         self.write_line("@5\n");
         self.write_line("D=A\n");
         self.write_line("@endFrame\n");
-        self.write_line("D=A-D\n");
-        self.write_line("M=A\n");
+        self.write_line("D=M-D\n");
+        self.write_line("A=D\n");
         self.write_line("D=M\n");
         self.write_line("@retAddr\n");
         self.write_line("M=D\n");
 
         // *ARG = pop()
         self.write_line("@SP\n");
-        self.write_line("D=M-1\n");
+        self.write_line("A=M-1\n");
+        self.write_line("D=M\n");
         self.write_line("@ARG\n");
         self.write_line("A=M\n");
         self.write_line("M=D\n");
 
         // SP = ARG + 1
         self.write_line("@ARG\n");
-        self.write_line("D=A\n");
+        self.write_line("D=M\n");
         self.write_line("@SP\n");
         self.write_line("M=D+1\n");
 
@@ -477,10 +491,10 @@ impl CodeWriter {
             self.write_line(format!("@{}\n", i).as_str());
             self.write_line("D=A\n");
             self.write_line("@endFrame\n");
-            self.write_line("D=A-D\n");
-            self.write_line("M=A\n");
+            self.write_line("D=M-D\n");
+            self.write_line("A=D\n");
             self.write_line("D=M\n");
-            self.write_line(format!("@{}\n", pointers[i-1]).as_str());
+            self.write_line(format!("@{}\n", pointers[i - 1]).as_str());
             self.write_line("M=D\n");
             i += 1
         }
@@ -492,52 +506,52 @@ impl CodeWriter {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let mut parser = Parser::build(config.in_file.as_str()).unwrap();
     let mut code_writer = CodeWriter::build(config.out_file.as_str());
+    let is_file = config.in_file.contains(".vm");
+    let mut input_files: Vec<String> = vec![];
 
-    // // RAM[SP] = 256
-    // code_writer.write_line("@256\n");
-    // code_writer.write_line("D=A\n");
-    // code_writer.write_line("@0\n");
-    // code_writer.write_line("M=D\n");
-    //
-    // // RAM[LCL] = 300
-    // code_writer.write_line("@300\n");
-    // code_writer.write_line("D=A\n");
-    // code_writer.write_line("@1\n");
-    // code_writer.write_line("M=D\n");
-    //
-    // // RAM[ARG] = 310
-    // code_writer.write_line("@310\n");
-    // code_writer.write_line("D=A\n");
-    // code_writer.write_line("@2\n");
-    // code_writer.write_line("M=D\n");
+    if !is_file {
+        for entry in fs::read_dir(config.in_file)? {
+            let entry = entry?;
+            let file_name = String::from(entry.file_name().to_str().unwrap());
 
-    loop {
-        if !parser.has_more_lines() {
-            break;
+            if file_name.contains(".vm") {
+                input_files.push(file_name.to_string());
+            }
         }
-        parser.advance();
+    } else {
+        input_files.push(config.in_file.clone());
+    }
 
-        if parser.command_type() == CommandType::CPush || parser.command_type() == CommandType::CPop
-        {
-            code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
-        } else if parser.command_type() == CommandType::CArithmetic {
-            code_writer.write_arithmetic(parser.arg1().as_str());
-        } else if parser.command_type() == CommandType::CLabel {
-            code_writer.write_label(parser.arg1().as_str());
-        } else if parser.command_type() == CommandType::CIf {
-            code_writer.write_if(parser.arg1().as_str());
-        } else if parser.command_type() == CommandType::CGoto {
-            code_writer.write_goto(parser.arg1().as_str());
-        } else if parser.command_type() == CommandType::CFunction {
-            code_writer.write_function(parser.arg1().as_str(), parser.arg2());
-        } else if parser.command_type() == CommandType::CReturn {
-            code_writer.write_return();
-        } else if parser.command_type() == CommandType::CCall {
-            code_writer.write_call(parser.arg1().as_str(), parser.arg2());
-        } else {
-            panic!("not implemented yet!");
+    while let Some(in_file) = input_files.pop() {
+        let mut parser = Parser::build(in_file.as_str()).unwrap();
+        loop {
+            if !parser.has_more_lines() {
+                break;
+            }
+            parser.advance();
+
+            if parser.command_type() == CommandType::CPush
+                || parser.command_type() == CommandType::CPop
+            {
+                code_writer.write_push_pop(parser.command_type(), &parser.arg1(), parser.arg2());
+            } else if parser.command_type() == CommandType::CArithmetic {
+                code_writer.write_arithmetic(parser.arg1().as_str());
+            } else if parser.command_type() == CommandType::CLabel {
+                code_writer.write_label(parser.arg1().as_str());
+            } else if parser.command_type() == CommandType::CIf {
+                code_writer.write_if(parser.arg1().as_str());
+            } else if parser.command_type() == CommandType::CGoto {
+                code_writer.write_goto(parser.arg1().as_str());
+            } else if parser.command_type() == CommandType::CFunction {
+                code_writer.write_function(parser.arg1().as_str(), parser.arg2());
+            } else if parser.command_type() == CommandType::CReturn {
+                code_writer.write_return();
+            } else if parser.command_type() == CommandType::CCall {
+                code_writer.write_call(parser.arg1().as_str(), parser.arg2());
+            } else {
+                panic!("not implemented yet!");
+            }
         }
     }
 
