@@ -22,6 +22,7 @@ Cousera link: https://www.coursera.org/learn/nand2tetris2
 * Project 07: VM I - Stack Arithmetic  
     * Virtual Machine Translator for operations: arithmetic/logical, push/pop.
 * Project 08: VM II - Program Control  
+    * Virtual Machine Translator extension: branching, functions, bootstrap, multi-file
 * Project 09: High-Level Language  
 * Project 10: Compiler I - Syntax Analysis  
 * Project 11: Compiler II - Code Generation  
