@@ -129,6 +129,7 @@ pub struct CodeWriter {
     file: fs::File,
     current_line: u16,
     current_file_name: String,
+    call_count: u16,
 }
 impl CodeWriter {
     pub fn build(out_file: &str) -> CodeWriter {
@@ -143,11 +144,13 @@ impl CodeWriter {
             file,
             current_line: 0,
             current_file_name: "".to_string(),
+            call_count: 0,
         };
     }
 
     pub fn set_file_name(&mut self, file_name: &str) {
         self.current_file_name = file_name.to_string();
+        // println!("Using filename: {}", file_name);
     }
 
     fn write_line(&mut self, line: &str) {
@@ -155,14 +158,20 @@ impl CodeWriter {
         self.current_line += 1;
     }
 
+    pub fn write_init(&mut self) {
+        self.write_line("@256\n");
+        self.write_line("D=A\n");
+        self.write_line("@SP\n");
+        self.write_line("M=D\n");
+        self.write_call("Sys.init", 0);
+    }
+
     pub fn write_arithmetic(&mut self, command: &str) {
         // SP--
         self.write_line("@SP\n");
-        self.write_line("M=M-1\n");
+        self.write_line("AM=M-1\n");
 
         // D = RAM[SP]
-        self.write_line("@SP\n");
-        self.write_line("A=M\n");
         self.write_line("D=M\n");
 
         if command == "neg" || command == "not" {
@@ -176,7 +185,7 @@ impl CodeWriter {
         } else {
             // SP--
             self.write_line("@SP\n");
-            self.write_line("M=M-1\n");
+            self.write_line("AM=M-1\n");
 
             if command == "add" || command == "sub" {
                 let cmd = match command {
@@ -186,8 +195,6 @@ impl CodeWriter {
                 };
 
                 // RAM[SP] = RAM[SP] +/- D
-                self.write_line("@SP\n");
-                self.write_line("A=M\n");
                 self.write_line(format!("M=M{}D\n", cmd).as_str());
             } else if command == "and" || command == "or" {
                 let cmd = match command {
@@ -197,8 +204,6 @@ impl CodeWriter {
                 };
 
                 // RAM[SP] = RAM[SP] &/| D
-                self.write_line("@SP\n");
-                self.write_line("A=M\n");
                 self.write_line(format!("M=M{}D\n", cmd).as_str());
             } else if command == "eq" || command == "gt" || command == "lt" {
                 let cmd = match command {
@@ -209,8 +214,6 @@ impl CodeWriter {
                 };
 
                 // RAM[SP] = RAM[SP] - D
-                self.write_line("@SP\n");
-                self.write_line("A=M\n");
                 self.write_line("D=M-D\n");
 
                 // @line_true, RAM[SP];JEQ/JGT/JLT
@@ -259,13 +262,14 @@ impl CodeWriter {
                 self.write_line("A=M\n");
                 self.write_line("M=D\n");
             } else {
-                if segment_pointer == "temp"
-                    || segment_pointer == "static"
+                if segment_pointer == "static" {
+                    self.write_line(format!("@{}.{}\n", self.current_file_name, index).as_str());
+                    self.write_line("D=M\n");
+                } else if segment_pointer == "temp"
                     || segment_pointer == "pointer"
                 {
                     let segment = match segment_pointer {
                         "temp" => format!("{}", 5 + index),
-                        "static" => format!("{}", 16 + index),
                         "pointer" => {
                             if index == 0 {
                                 String::from("THIS")
@@ -276,7 +280,7 @@ impl CodeWriter {
                         _ => panic!("should not happen!"),
                     };
 
-                    // D <- temp/static + i
+                    // D <- (segment address)
                     self.write_line(format!("@{}\n", segment).as_str());
                     self.write_line("D=M\n");
                 } else {
@@ -301,14 +305,17 @@ impl CodeWriter {
             self.write_line("@SP\n");
             self.write_line("M=M+1\n");
         } else if command_type == CommandType::CPop {
-            if segment_pointer == "temp"
-                || segment_pointer == "static"
+            if segment_pointer == "static" {
+                self.write_line(format!("@{}.{}\n", self.current_file_name, index).as_str());
+                self.write_line("D=A\n"); // TODO: D=A?
+                self.write_line("@R13\n");
+                self.write_line("M=D\n");
+            } else if segment_pointer == "temp"
                 || segment_pointer == "pointer"
             {
                 // addr <- temp/static + i
                 let segment = match segment_pointer {
                     "temp" => format!("{}", 5 + index),
-                    "static" => format!("{}", 16 + index),
                     "pointer" => {
                         if index == 0 {
                             String::from("THIS")
@@ -322,7 +329,7 @@ impl CodeWriter {
                 // addr <- temp/static + i
                 self.write_line(format!("@{}\n", segment).as_str());
                 self.write_line("D=A\n");
-                self.write_line("@13\n");
+                self.write_line("@R13\n");
                 self.write_line("M=D\n");
             } else {
                 // addr <- segmentPointer + i
@@ -334,28 +341,26 @@ impl CodeWriter {
 
                 // addr <- M + D
                 self.write_line("D=M+D\n");
-                self.write_line("@13\n");
+                self.write_line("@R13\n");
                 self.write_line("M=D\n");
             }
 
             // SP--
             self.write_line("@SP\n");
-            self.write_line("M=M-1\n");
+            self.write_line("AM=M-1\n");
 
             // RAM[addr] <- RAM[SP]
-            self.write_line("@SP\n");
-            self.write_line("A=M\n");
             self.write_line("D=M\n");
-            self.write_line("@13\n");
+            self.write_line("@R13\n");
             self.write_line("A=M\n");
             self.write_line("M=D\n");
         }
     }
 
-    pub fn write_init(&self) {}
-
     pub fn write_label(&mut self, label: &str) {
         self.write_line(format!("({})\n", label).as_str());
+        self.current_line -= 1;
+
     }
 
     pub fn write_goto(&mut self, label: &str) {
@@ -366,9 +371,8 @@ impl CodeWriter {
     pub fn write_if(&mut self, label: &str) {
         // SP--
         self.write_line("@SP\n");
-        self.write_line("M=M-1\n");
-        // D = RAM[SP]
-        self.write_line("A=M\n");
+        self.write_line("AM=M-1\n"); // Use AM instead of M, to save a deference (A=M)
+                                     // D = RAM[SP]
         self.write_line("D=M\n");
         // if D != 0 then jump
         self.write_line(format!("@{}\n", label).as_str());
@@ -376,103 +380,81 @@ impl CodeWriter {
     }
 
     pub fn write_function(&mut self, function_name: &str, num_args: u16) {
-        self.write_line(format!("({})\n", function_name).as_str());
+        self.write_label(function_name);
 
-        let mut i = 0;
-        while i < num_args {
-            self.write_line("@SP\n");
-            self.write_line("A=M\n");
-            self.write_line("M=0\n");
-            self.write_line("@SP\n");
-            self.write_line("M=M+1\n");
-            i += 1;
+        for _ in 0..num_args {
+            self.write_push_pop(CommandType::CPush, "constant", 0);
         }
     }
 
     pub fn write_call(&mut self, function_name: &str, num_args: u16) {
-        // Define label for return address
-        let label = "xyz"; // TODO: randomly generate a variable name?
+        // Define label for return address (e.g. Foo$ret.1)
+        let label = format!("{}$ret.{}", function_name, self.call_count);
+        self.call_count += 1;
+
+        let push_d_to_stack = |writer: &mut CodeWriter| {
+            writer.write_line("@SP\n");
+            writer.write_line("A=M\n");
+            writer.write_line("M=D\n");
+            // Increment stack
+            writer.write_line("@SP\n");
+            writer.write_line("M=M+1\n");
+        };
 
         // Push return address
-        self.write_line(format!("@{}${}\n", function_name, label).as_str());
+        self.write_line(format!("@{}\n", label).as_str());
         self.write_line("D=A\n");
-        self.write_line("@SP\n");
-        self.write_line("A=M\n");
-        self.write_line("M=D\n"); // change X to return address
-
-        // Increment stack
-        self.write_line("@SP\n");
-        self.write_line("M=M+1\n");
+        push_d_to_stack(self);
 
         // Push pointers
         let mut save_pointers = vec!["THAT", "THIS", "ARG", "LCL"];
         while let Some(pointer) = save_pointers.pop() {
-            // Push LCL
+            // Push pointer
             self.write_line(format!("@{}\n", pointer).as_str());
             self.write_line("D=M\n");
-            self.write_line("@SP\n");
-            self.write_line("M=D\n");
-
-            // Increment stack
-            self.write_line("@SP\n");
-            self.write_line("M=M+1\n");
+            push_d_to_stack(self);
         }
-
-        // Reposition ARG pointer
-        // ARG = SP
-        self.write_line("@SP\n");
-        self.write_line("D=A\n");
-        self.write_line("@ARG\n");
-        self.write_line("M=D\n");
-
-        // ARG -= 5
-        self.write_line("@5\n");
-        self.write_line("D=A\n");
-        self.write_line("@ARG\n");
-        self.write_line("M=M-D\n");
-
-        // ARG -= num_args
-        self.write_line(format!("@{}\n", num_args).as_str());
-        self.write_line("D=A\n");
-        self.write_line("@ARG\n");
-        self.write_line("M=M-D\n");
 
         // LCL = SP
         self.write_line("@SP\n");
-        self.write_line("D=A\n");
+        self.write_line("D=M\n");
         self.write_line("@LCL\n");
         self.write_line("M=D\n");
 
-        // Goto function
-        self.write_line(format!("@{}\n", function_name).as_str());
-        self.write_line("0;JMP\n");
+        // Reposition ARG pointer
+        // D = SP; D -= 5 + num_args; ARG = D
+        self.write_line(format!("@{}\n", num_args + 5).as_str());
+        self.write_line("D=D-A\n");
+        self.write_line("@ARG\n");
+        self.write_line("M=D\n");
 
-        // Define label (e.g. Foo$ret.1)
-        self.write_line(format!("({}{})\n", function_name, label).as_str());
+        // Goto function
+        self.write_goto(function_name);
+
+        // Define label
+        self.write_label(label.as_str());
     }
 
     pub fn write_return(&mut self) {
-        // TODO: perhaps use @13 (general purpose registers) instead of @endFrame
+        // endFrame = R13
+        // retAddr = R14
 
         // endFrame = LCL
         self.write_line("@LCL\n");
         self.write_line("D=M\n");
-        self.write_line("@endFrame\n");
+        self.write_line("@R13\n");
         self.write_line("M=D\n");
 
         // retAddr = *(endFrame - 5)
         self.write_line("@5\n");
-        self.write_line("D=A\n");
-        self.write_line("@endFrame\n");
-        self.write_line("D=M-D\n");
-        self.write_line("A=D\n");
+        self.write_line("A=D-A\n");
         self.write_line("D=M\n");
-        self.write_line("@retAddr\n");
+        self.write_line("@R14\n");
         self.write_line("M=D\n");
 
         // *ARG = pop()
         self.write_line("@SP\n");
-        self.write_line("A=M-1\n");
+        self.write_line("AM=M-1\n");
         self.write_line("D=M\n");
         self.write_line("@ARG\n");
         self.write_line("A=M\n");
@@ -490,9 +472,8 @@ impl CodeWriter {
             // SEGMENT = *(endFrame - 1)
             self.write_line(format!("@{}\n", i).as_str());
             self.write_line("D=A\n");
-            self.write_line("@endFrame\n");
-            self.write_line("D=M-D\n");
-            self.write_line("A=D\n");
+            self.write_line("@R13\n");
+            self.write_line("A=M-D\n");
             self.write_line("D=M\n");
             self.write_line(format!("@{}\n", pointers[i - 1]).as_str());
             self.write_line("M=D\n");
@@ -500,7 +481,8 @@ impl CodeWriter {
         }
 
         // Jump to return address
-        self.write_line("A=D\n");
+        self.write_line("@R14\n");
+        self.write_line("A=M\n");
         self.write_line("0;JMP\n");
     }
 }
@@ -513,7 +495,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     if !is_file {
         for entry in fs::read_dir(config.in_file)? {
             let entry = entry?;
-            let file_name = String::from(entry.file_name().to_str().unwrap());
+            let file_name = String::from(entry.path().to_str().unwrap());
 
             if file_name.contains(".vm") {
                 input_files.push(file_name.to_string());
@@ -523,8 +505,15 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         input_files.push(config.in_file.clone());
     }
 
+    code_writer.write_init();
+
     while let Some(in_file) = input_files.pop() {
+        println!("Loading file: {}", in_file.as_str());
         let mut parser = Parser::build(in_file.as_str()).unwrap();
+   
+        let in_file_name = in_file.replace(".vm", "");
+        code_writer.set_file_name(in_file_name.split('/').last().unwrap());
+
         loop {
             if !parser.has_more_lines() {
                 break;
@@ -554,6 +543,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    println!("Output: {}", config.out_file);
 
     Ok(())
 }
