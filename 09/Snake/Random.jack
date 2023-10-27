@@ -1,0 +1,48 @@
+class Random {
+    field int x;
+    field int a;
+    field int b;
+    field int m;
+
+    constructor Random new(int px, int pa, int pb, int pm) {
+        let x = px;
+        let a = pa;
+        let b = pb;
+        let m = pm;
+        return this;
+    }
+
+    method int getRandomInt(int min, int max) {
+        // x0=seed; a=multiplier; b=increment; m=modulus; n=desired array length; 
+        // const linearRandomGenerator = (x0, a, b, m, n) => {
+        //     const results = []
+        //     for (let i = 0; i < n; i++) {
+        //     	x0 = (a * x0 + b) % m
+        //         results.push(x0)
+        //     }
+        //     return results
+        // }
+        var int res;
+        let res = Random.mod(Math.multiply(a, x) + b, m);
+        let x = res;
+
+        let res = Random.clamp(res, min, max);
+        return res;
+    }
+    
+    function int mod(int x, int y) {
+        var int res;
+        let res = x - Math.multiply(y, Math.divide(x, y));
+        return res;
+    }
+
+    function int clamp(int x, int min, int max) {
+        if (x < min) {
+            let x = min;
+        }
+        if (x > max) {
+            let x = max;
+        }
+        return x;
+    }
+}

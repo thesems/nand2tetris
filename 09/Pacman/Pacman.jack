@@ -1,5 +1,0 @@
-class Pacman {
-    constructor Pacman new() {
-        return this;
-    }
-}

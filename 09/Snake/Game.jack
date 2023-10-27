@@ -1,0 +1,79 @@
+class Game {
+    field int points;
+    field bool alive;
+    field Snake snake;
+    field Item item;
+    field int direction;
+
+    constructor Game new() {
+        var int i;
+
+        let direction = 4;
+        let points = 0;
+        let alive = true;
+        let snake = Snake.new(10, 30, 5, 5);
+        let item = Item.new(150, 150, 5);
+
+        return this;
+    }
+
+    method void dispose() {
+        do snake.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void reset() {
+        let points = 0;
+        let alive = true;
+        do snake.reset();
+        return;
+    }
+
+    method void run() {
+        var int i;
+        var char key;
+        var bool pressed;
+        var bool hit;
+        var int updateTime;
+        var int x;
+        var int y;
+        var Random randX;
+        var Random randY;
+
+        let randX = Random.new(11, 31, 1, 511);
+        let randY = Random.new(9, 31, 1, 255);
+
+        while (alive) {
+            let key = Keyboard.keyPressed();
+
+            if  (key = 81) { let alive = false; } // q
+            if  (key = 131) { let direction = 0; } // up arrow
+            if  (key = 133) { let direction = 1; } // down arrow
+            if  (key = 130) { let direction = 2; } // left arrow
+            if  (key = 132) { let direction = 3; } // right arrow
+
+            do snake.update(direction);
+            do snake.draw();
+            do item.draw();
+
+            let hit = snake.ateItself();
+            if (hit) {
+                let alive = false;
+            }
+
+            let hit = item.intersect(snake.getHeadBoundingBox());
+            if (hit) {
+                let points = points + 1;
+                let x = randX.getRandomInt(5, 501);
+                let y = randY.getRandomInt(5, 245);
+                do item.reset(x, y);
+                do snake.grow();
+            }
+
+            do Sys.wait(100);
+            do Screen.clearScreen();
+        }
+        return;
+    }
+}

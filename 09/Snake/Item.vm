@@ -1,0 +1,58 @@
+function Item.new 0
+push constant 1
+call Memory.alloc 1
+pop pointer 0
+push argument 0
+push argument 1
+push argument 2
+push argument 2
+call BoundingBox.new 4
+pop this 0
+push pointer 0
+return
+function Item.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+function Item.reset 0
+push argument 0
+pop pointer 0
+push this 0
+push argument 1
+push argument 2
+call BoundingBox.setCoordinate 3
+pop temp 0
+push constant 0
+return
+function Item.intersect 0
+push argument 0
+pop pointer 0
+push this 0
+push argument 1
+call BoundingBox.intersect 2
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+not
+return
+label IF_FALSE0
+push constant 0
+return
+function Item.draw 0
+push argument 0
+pop pointer 0
+push this 0
+call BoundingBox.getX 1
+push this 0
+call BoundingBox.getY 1
+push this 0
+call BoundingBox.getWidth 1
+call Screen.drawCircle 3
+pop temp 0
+push constant 0
+return

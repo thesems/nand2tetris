@@ -1,6 +1,0 @@
-class Main {
-    function void new() {
-        do Output.Println("test");
-        return;
-    }
-}

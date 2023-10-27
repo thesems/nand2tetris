@@ -1,0 +1,30 @@
+class Item {
+    field BoundingBox box;
+
+    constructor Item new(int x, int y, int r) {
+        let box = BoundingBox.new(x, y, r, r);
+        return this;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void reset(int x, int y) {
+        do box.setCoordinate(x, y);
+        return;
+    }
+
+    method bool intersect(BoundingBox other) {
+        if (box.intersect(other)) {
+            return true;
+        }
+        return false;
+    }
+
+    method void draw() {
+        do Screen.drawCircle(box.getX(), box.getY(), box.getWidth());
+        return;
+    }
+}

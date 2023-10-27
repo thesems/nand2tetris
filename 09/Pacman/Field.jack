@@ -1,8 +1,0 @@
-class Field {
-    # walls
-    # items
-
-    constructor Field new() {
-        return this;
-    }
-}

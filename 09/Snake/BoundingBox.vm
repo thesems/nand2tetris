@@ -1,0 +1,97 @@
+function BoundingBox.new 0
+push constant 4
+call Memory.alloc 1
+pop pointer 0
+push argument 0
+pop this 0
+push argument 1
+pop this 1
+push argument 2
+pop this 2
+push argument 3
+pop this 3
+push pointer 0
+return
+function BoundingBox.dispose 0
+push argument 0
+pop pointer 0
+call Memory.deAlloc 0
+pop temp 0
+push constant 0
+return
+function BoundingBox.intersect 4
+push argument 0
+pop pointer 0
+push argument 1
+call BoundingBox.getX 1
+pop local 0
+push argument 1
+call BoundingBox.getY 1
+pop local 1
+push argument 1
+call BoundingBox.getWidth 1
+pop local 2
+push argument 1
+call BoundingBox.getHeight 1
+pop local 3
+push this 0
+push local 0
+push local 2
+add
+lt
+push this 0
+push this 2
+add
+push local 0
+gt
+and
+push this 1
+push local 1
+push local 3
+add
+lt
+and
+push this 1
+push this 3
+add
+push local 1
+gt
+and
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+not
+return
+label IF_FALSE0
+push constant 0
+return
+function BoundingBox.getX 0
+push argument 0
+pop pointer 0
+push this 0
+return
+function BoundingBox.getY 0
+push argument 0
+pop pointer 0
+push this 1
+return
+function BoundingBox.getWidth 0
+push argument 0
+pop pointer 0
+push this 2
+return
+function BoundingBox.getHeight 0
+push argument 0
+pop pointer 0
+push this 3
+return
+function BoundingBox.setCoordinate 0
+push argument 0
+pop pointer 0
+push argument 1
+pop this 0
+push argument 2
+pop this 1
+push constant 0
+return
