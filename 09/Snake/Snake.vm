@@ -1,0 +1,363 @@
+function Snake.new 0
+push constant 3
+call Memory.alloc 1
+pop pointer 0
+push constant 7
+pop this 0
+push constant 4
+pop this 1
+push argument 0
+push argument 1
+push argument 2
+push argument 3
+call BoundingBox.new 4
+push constant 0
+call List.new 2
+pop this 2
+push pointer 0
+return
+function Snake.dispose 0
+push argument 0
+pop pointer 0
+push this 2
+call List.dispose 1
+pop temp 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+function Snake.reset 0
+push argument 0
+pop pointer 0
+push constant 4
+pop this 1
+push this 2
+call List.dispose 1
+pop temp 0
+push argument 1
+push argument 2
+push argument 3
+push argument 4
+call BoundingBox.new 4
+push constant 0
+call List.new 2
+pop this 2
+push constant 0
+return
+function Snake.intersect 1
+push argument 0
+pop pointer 0
+push this 2
+call List.getData 1
+pop local 0
+push local 0
+push argument 1
+call BoundingBox.intersect 2
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+not
+return
+label IF_FALSE0
+push constant 0
+return
+function Snake.ateItself 3
+push argument 0
+pop pointer 0
+push this 2
+pop local 0
+push local 0
+call List.getData 1
+pop local 2
+push this 2
+call List.getNext 1
+pop local 0
+label WHILE_EXP0
+push local 0
+push constant 0
+eq
+not
+not
+if-goto WHILE_END0
+push local 0
+call List.getData 1
+pop local 1
+push local 2
+push local 1
+call BoundingBox.intersect 2
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+not
+return
+label IF_FALSE0
+push local 0
+call List.getNext 1
+pop local 0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return
+function Snake.update 8
+push argument 0
+pop pointer 0
+push this 2
+call List.getData 1
+pop local 7
+push local 7
+call BoundingBox.getX 1
+pop local 0
+push local 7
+call BoundingBox.getY 1
+pop local 1
+push local 7
+call BoundingBox.getWidth 1
+pop local 2
+push local 7
+call BoundingBox.getHeight 1
+pop local 3
+push local 0
+pop local 4
+push local 1
+pop local 5
+push argument 1
+push constant 0
+eq
+push this 1
+push constant 1
+eq
+not
+and
+push argument 1
+push constant 1
+eq
+push this 1
+push constant 0
+eq
+not
+and
+or
+push argument 1
+push constant 2
+eq
+push this 1
+push constant 3
+eq
+not
+and
+or
+push argument 1
+push constant 3
+eq
+push this 1
+push constant 2
+eq
+not
+and
+or
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push argument 1
+pop this 1
+label IF_FALSE0
+push this 1
+push constant 0
+eq
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push local 1
+push this 0
+sub
+pop local 1
+label IF_FALSE1
+push this 1
+push constant 1
+eq
+if-goto IF_TRUE2
+goto IF_FALSE2
+label IF_TRUE2
+push local 1
+push this 0
+add
+pop local 1
+label IF_FALSE2
+push this 1
+push constant 2
+eq
+if-goto IF_TRUE3
+goto IF_FALSE3
+label IF_TRUE3
+push local 0
+push this 0
+sub
+pop local 0
+label IF_FALSE3
+push this 1
+push constant 3
+eq
+if-goto IF_TRUE4
+goto IF_FALSE4
+label IF_TRUE4
+push local 0
+push this 0
+add
+pop local 0
+label IF_FALSE4
+push local 0
+push constant 0
+lt
+if-goto IF_TRUE5
+goto IF_FALSE5
+label IF_TRUE5
+push constant 511
+push local 2
+sub
+pop local 0
+label IF_FALSE5
+push local 1
+push constant 15
+lt
+if-goto IF_TRUE6
+goto IF_FALSE6
+label IF_TRUE6
+push constant 255
+push local 3
+sub
+pop local 1
+label IF_FALSE6
+push local 0
+push local 2
+add
+push constant 511
+gt
+if-goto IF_TRUE7
+goto IF_FALSE7
+label IF_TRUE7
+push local 2
+pop local 0
+label IF_FALSE7
+push local 1
+push local 3
+add
+push constant 255
+gt
+if-goto IF_TRUE8
+goto IF_FALSE8
+label IF_TRUE8
+push constant 15
+push local 3
+add
+pop local 1
+label IF_FALSE8
+push local 7
+push local 0
+push local 1
+call BoundingBox.setCoordinate 3
+pop temp 0
+push local 4
+pop local 0
+push local 5
+pop local 1
+push this 2
+call List.getNext 1
+pop local 6
+label WHILE_EXP0
+push local 6
+push constant 0
+eq
+not
+not
+if-goto WHILE_END0
+push local 6
+call List.getData 1
+pop local 7
+push local 7
+call BoundingBox.getX 1
+pop local 4
+push local 7
+call BoundingBox.getY 1
+pop local 5
+push local 7
+push local 0
+push local 1
+call BoundingBox.setCoordinate 3
+pop temp 0
+push local 4
+pop local 0
+push local 5
+pop local 1
+push local 6
+call List.getNext 1
+pop local 6
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return
+function Snake.grow 2
+push argument 0
+pop pointer 0
+push this 2
+call List.getLast 1
+pop local 0
+push local 0
+call List.getData 1
+pop local 1
+push local 0
+push local 1
+call BoundingBox.getX 1
+push local 1
+call BoundingBox.getY 1
+push local 1
+call BoundingBox.getWidth 1
+push local 1
+call BoundingBox.getHeight 1
+call BoundingBox.new 4
+push constant 0
+call List.new 2
+call List.setList 2
+pop temp 0
+push constant 0
+return
+function Snake.draw 4
+push argument 0
+pop pointer 0
+push this 2
+pop local 0
+label WHILE_EXP0
+push local 0
+push constant 0
+eq
+not
+not
+if-goto WHILE_END0
+push local 0
+call List.getData 1
+pop local 1
+push local 1
+call BoundingBox.getX 1
+push local 1
+call BoundingBox.getY 1
+push local 1
+call BoundingBox.getX 1
+push local 1
+call BoundingBox.getWidth 1
+add
+push local 1
+call BoundingBox.getY 1
+push local 1
+call BoundingBox.getHeight 1
+add
+call Screen.drawRectangle 4
+pop temp 0
+push local 0
+call List.getNext 1
+pop local 0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return

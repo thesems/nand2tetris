@@ -1,0 +1,51 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/09/List/List.jack
+
+// This file has been modified to hold class BoundingBox.
+
+/** Represents a linked list of BoundingBox. */
+class List {
+    field BoundingBox data;          // a list consists of a data field,
+    field List next;         // followed by a list
+
+    /* Creates a List. */
+    constructor List new(BoundingBox car, List cdr) {
+        let data = car;       // the identifiers car and cdr are used in
+        let next = cdr;       // memory of the Lisp programming language
+        return this;
+    }
+
+    /** Accessors. */
+    method BoundingBox getData() { return data; }
+    method BoundingBox getNext() { return next; }
+
+    /** Disposes this List by recursively disposing its tail. */
+    method void dispose() {
+        if (~(next = null)) {
+            do next.dispose();
+        }
+        do data.dispose();
+        // Uses an OS routine to recycle this object.
+        do Memory.deAlloc(this);
+        return;
+    }
+    
+    // More list processing methods can come here.
+
+    /** Get last element in the list. */
+    method List getLast() {
+        var List iter;
+        let iter = this;
+        while(~(iter.getNext() = null)) {
+            let iter = iter.getNext();
+        }
+        return iter;
+    }
+
+    method void setList(List other) {
+        let next = other;
+        return;
+    }
+}

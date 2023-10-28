@@ -1,0 +1,57 @@
+class BoundingBox {
+    field int x;
+    field int y;
+    field int width;
+    field int height;
+
+    constructor BoundingBox new(int px, int py, int w, int h) {
+        let x = px;
+        let y = py;
+        let width = w;
+        let height = h;
+        return this; 
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method bool intersect(BoundingBox box) {
+        var int tx;
+        var int ty;
+        var int w;
+        var int h;
+
+        let tx = box.getX();
+        let ty = box.getY();
+        let w = box.getWidth();
+        let h = box.getHeight();
+
+        return ~(
+            (x > (tx + w)) | ((x + width) < tx) | ((y + height) < ty) | (y > (ty + h))
+        );
+    }
+
+    method int getX() {
+        return x;
+    }
+
+    method int getY() {
+        return y;
+    }
+
+    method int getWidth() {
+        return width;
+    }
+
+    method int getHeight() {
+        return height;
+    }
+
+    method void setCoordinate(int px, int py) {
+        let x = px;
+        let y = py;
+        return;
+    }
+}

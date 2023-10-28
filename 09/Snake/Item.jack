@@ -1,0 +1,28 @@
+class Item {
+    field BoundingBox box;
+
+    constructor Item new(int x, int y, int w, int h) {
+        let box = BoundingBox.new(x, y, w, h);
+        return this;
+    }
+
+    method void dispose() {
+        do box.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void reset(int x, int y) {
+        do box.setCoordinate(x, y);
+        return;
+    }
+
+    method BoundingBox getBoundingBox() {
+        return box; 
+    }
+
+    method void draw() {
+        do Screen.drawCircle(box.getX(), box.getY(), box.getWidth());
+        return;
+    }
+}

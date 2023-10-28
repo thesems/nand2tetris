@@ -1,0 +1,146 @@
+class Snake {
+    field int speed;
+    field int direction;
+    field List parts;
+
+    constructor Snake new(int x, int y, int width, int height) {
+        let speed = 7;
+        let direction = 4;
+        let parts = List.new(BoundingBox.new(x, y, width, height), null);
+        return this;
+    }
+
+    method void dispose() {
+        do parts.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void reset(int x, int y, int width, int height) {
+        let direction = 4;
+        do parts.dispose();
+        let parts = List.new(BoundingBox.new(x, y, width, height), null);
+        return;
+    }
+
+    method bool intersect(BoundingBox other) {
+        var BoundingBox box;
+        let box = parts.getData();
+        if (box.intersect(other)) {
+            return true;
+        }
+        return false;
+    }
+
+    method bool ateItself() {
+        var List iter;
+        var BoundingBox box;
+        var BoundingBox headBox;
+
+        let iter = parts;
+        let headBox = iter.getData();
+        let iter = parts.getNext();
+ 
+        while (~(iter = null)) {
+            let box = iter.getData();
+            if (headBox.intersect(box)) {
+                return true;
+            }
+            let iter = iter.getNext();
+        }
+        return false;
+    }
+
+    method void update(int dir) {
+        var int x;
+        var int y;
+        var int w;
+        var int h;
+        var int tx;
+        var int ty;
+        var List iter;
+        var BoundingBox box;
+
+        let box = parts.getData();
+        let x = box.getX();
+        let y = box.getY();
+        let w = box.getWidth();
+        let h = box.getHeight();
+        let tx = x;
+        let ty = y;
+
+        if ((dir = 0) & (~(direction = 1)) | ((dir = 1) & ~(direction = 0)) | ((dir = 2) & ~(direction = 3)) | ((dir = 3) & ~(direction = 2))) {
+            let direction = dir;
+        }
+
+        if (direction = 0) { // up 
+            let y = y - speed;
+        }
+        if (direction = 1) { // down
+            let y = y + speed;
+        }
+        if (direction = 2) { // left
+            let x = x - speed;
+        }
+        if (direction = 3) { // right
+            let x = x + speed;
+        }
+
+        if (x < 0) {
+            let x = 511 - w;
+        }
+        if (y < 15) {
+            let y = 255 - h;
+        }
+        if ((x + w) > 511) {
+            let x = w;
+        }
+        if ((y + h) > 255) {
+            let y = 15 + h;
+        }
+
+        // move head
+        do box.setCoordinate(x, y);
+
+        // move rest of the snake by one spot
+        let x = tx;
+        let y = ty;
+        let iter = parts.getNext();
+        while (~(iter = null)) {
+            let box = iter.getData();
+            let tx = box.getX();
+            let ty = box.getY();
+            do box.setCoordinate(x, y);
+            let x = tx;
+            let y = ty;
+            let iter = iter.getNext();
+        }
+        return;
+    }
+
+    method void grow() {
+        var List last;
+        var BoundingBox box;
+
+        let last = parts.getLast();
+        let box = last.getData();
+
+        do last.setList(List.new(BoundingBox.new(box.getX(), box.getY(), box.getWidth(), box.getHeight()), null));
+        return;
+    }
+
+    method void draw() {
+        var List iter;
+        var BoundingBox box;
+        var String str;
+        var int location;
+        
+        let iter = parts;
+        while (~(iter = null)) {
+            let box = iter.getData();
+            do Screen.drawRectangle(box.getX(), box.getY(), box.getX() + box.getWidth(), box.getY() + box.getHeight());
+            let iter = iter.getNext();
+        }
+        return;
+    }
+}
