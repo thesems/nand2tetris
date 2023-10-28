@@ -1,12 +1,13 @@
 class Item {
     field BoundingBox box;
 
-    constructor Item new(int x, int y, int r) {
-        let box = BoundingBox.new(x, y, r, r);
+    constructor Item new(int x, int y, int w, int h) {
+        let box = BoundingBox.new(x, y, w, h);
         return this;
     }
 
     method void dispose() {
+        do box.dispose();
         do Memory.deAlloc(this);
         return;
     }
@@ -16,11 +17,8 @@ class Item {
         return;
     }
 
-    method bool intersect(BoundingBox other) {
-        if (box.intersect(other)) {
-            return true;
-        }
-        return false;
+    method BoundingBox getBoundingBox() {
+        return box; 
     }
 
     method void draw() {

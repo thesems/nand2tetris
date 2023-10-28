@@ -1,34 +1,35 @@
 class Snake {
-    field int initX;
-    field int initY;
     field int speed;
     field int direction;
     field List parts;
 
     constructor Snake new(int x, int y, int width, int height) {
-        let initX = x;
-        let initY = y;
-        let speed = 8;
+        let speed = 7;
         let direction = 4;
         let parts = List.new(BoundingBox.new(x, y, width, height), null);
         return this;
     }
 
     method void dispose() {
+        do parts.dispose();
         do Memory.deAlloc(this);
         return;
     }
 
-    method void reset() {
-        var BoundingBox box;
-        let box = parts.getData();
-        let box = BoundingBox.new(initX, initY, box.getWidth(), box.getHeight());
+    method void reset(int x, int y, int width, int height) {
         let direction = 4;
+        do parts.dispose();
+        let parts = List.new(BoundingBox.new(x, y, width, height), null);
         return;
     }
 
-    method BoundingBox getHeadBoundingBox() {
-        return parts.getData();
+    method bool intersect(BoundingBox other) {
+        var BoundingBox box;
+        let box = parts.getData();
+        if (box.intersect(other)) {
+            return true;
+        }
+        return false;
     }
 
     method bool ateItself() {
@@ -85,17 +86,17 @@ class Snake {
             let x = x + speed;
         }
 
-        if (x < w) {
+        if (x < 0) {
             let x = 511 - w;
         }
-        if (y < h) {
+        if (y < 15) {
             let y = 255 - h;
         }
         if ((x + w) > 511) {
             let x = w;
         }
         if ((y + h) > 255) {
-            let y = h;
+            let y = 15 + h;
         }
 
         // move head
@@ -132,11 +133,12 @@ class Snake {
         var List iter;
         var BoundingBox box;
         var String str;
+        var int location;
         
         let iter = parts;
         while (~(iter = null)) {
             let box = iter.getData();
-            do Screen.drawCircle(box.getX(), box.getY(), box.getWidth());
+            do Screen.drawRectangle(box.getX(), box.getY(), box.getX() + box.getWidth(), box.getY() + box.getHeight());
             let iter = iter.getNext();
         }
         return;

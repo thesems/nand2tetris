@@ -15,7 +15,8 @@ return
 function BoundingBox.dispose 0
 push argument 0
 pop pointer 0
-call Memory.deAlloc 0
+push pointer 0
+call Memory.deAlloc 1
 pop temp 0
 push constant 0
 return
@@ -38,33 +39,26 @@ push this 0
 push local 0
 push local 2
 add
-lt
+gt
 push this 0
 push this 2
 add
 push local 0
-gt
-and
-push this 1
-push local 1
-push local 3
-add
 lt
-and
+or
 push this 1
 push this 3
 add
 push local 1
+lt
+or
+push this 1
+push local 1
+push local 3
+add
 gt
-and
-if-goto IF_TRUE0
-goto IF_FALSE0
-label IF_TRUE0
-push constant 0
+or
 not
-return
-label IF_FALSE0
-push constant 0
 return
 function BoundingBox.getX 0
 push argument 0

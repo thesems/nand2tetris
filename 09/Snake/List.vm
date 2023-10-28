@@ -32,6 +32,9 @@ push this 1
 call List.dispose 1
 pop temp 0
 label IF_FALSE0
+push this 0
+call BoundingBox.dispose 1
+pop temp 0
 push pointer 0
 call Memory.deAlloc 1
 pop temp 0

@@ -26,6 +26,7 @@ class List {
         if (~(next = null)) {
             do next.dispose();
         }
+        do data.dispose();
         // Uses an OS routine to recycle this object.
         do Memory.deAlloc(this);
         return;

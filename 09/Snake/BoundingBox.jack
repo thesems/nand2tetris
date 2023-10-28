@@ -13,42 +13,24 @@ class BoundingBox {
     }
 
     method void dispose() {
-        do Memory.deAlloc();
+        do Memory.deAlloc(this);
         return;
     }
 
     method bool intersect(BoundingBox box) {
-        // Collision if any point of one box is contained in the other box.
         var int tx;
         var int ty;
         var int w;
         var int h;
-
-    // rect2.bind("EnterFrame", function () {
-    //   if (
-    //     rect1.x < rect2.x + rect2.w &&
-    //     rect1.x + rect1.w > rect2.x &&
-    //     rect1.y < rect2.y + rect2.h &&
-    //     rect1.y + rect1.h > rect2.y
-    //   ) {
-    //     // Collision detected!
-    //     this.color("green");
-    //   } else {
-    //     // No collision
-    //     this.color("blue");
-    //   }
-    // });
 
         let tx = box.getX();
         let ty = box.getY();
         let w = box.getWidth();
         let h = box.getHeight();
 
-        if ((x < (tx + w)) & ((x + width) > tx) & (y < (ty + h)) & ((y + height) > ty)) {
-            return true;
-        }
-
-        return false;
+        return ~(
+            (x > (tx + w)) | ((x + width) < tx) | ((y + height) < ty) | (y > (ty + h))
+        );
     }
 
     method int getX() {
