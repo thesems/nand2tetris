@@ -15,16 +15,20 @@ Coursera link: https://www.coursera.org/learn/build-a-computer/
 * Project 05: Computer Architecture  
 * Project 06: Assembler  
     * Translates an assembler program to a binary machine language representation.
+    * https://github.com/thesems/nand2tetris/tree/main/06/assembler
 
 ### Build a modern computer (software focus) - Part 2
 Cousera link: https://www.coursera.org/learn/nand2tetris2
 
 * Project 07: VM I - Stack Arithmetic  
     * Virtual Machine Translator for operations: arithmetic/logical, push/pop.
+    * https://github.com/thesems/nand2tetris/tree/main/07/vmtranslator
 * Project 08: VM II - Program Control  
     * Virtual Machine Translator extension: branching, functions, bootstrap, multi-file
+    * https://github.com/thesems/nand2tetris/tree/main/08/vmtranslator
 * Project 09: High-Level Language
     * Game in Jack language: Snake. Eat mice and grow!
+    * https://github.com/thesems/nand2tetris/tree/main/09/Snake
 * Project 10: Compiler I - Syntax Analysis  
 * Project 11: Compiler II - Code Generation  
 * Project 12: Operating System  
