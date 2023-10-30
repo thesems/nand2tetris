@@ -1,4 +1,5 @@
-use std::{error::Error};
+use std::fs;
+use std::error::Error;
 
 use crate::config::Config;
 use crate::tokenizer::Tokenizer;
@@ -11,7 +12,8 @@ pub struct Analyzer {
 
 impl Analyzer {
     pub fn build(config: Config) -> Result<Analyzer, Box<dyn Error>> {
-        let tokenizer = Tokenizer::build(config.input.as_str())?;
+        let input = fs::read_to_string(config.input.as_str())?;
+        let tokenizer = Tokenizer::build(input.as_str())?;
         let comp_engine = CompilationEngine::build(&tokenizer)?;
 
         Ok(Analyzer { tokenizer, comp_engine })

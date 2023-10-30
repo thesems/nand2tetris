@@ -3,6 +3,7 @@ pub mod config;
 pub mod analyzer;
 pub mod tokenizer;
 pub mod compilation_engine;
+pub mod tests;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

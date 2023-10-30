@@ -1,6 +1,6 @@
-use std::{error::Error, fs, io::BufRead};
+use std::error::Error;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum TokenType {
     Unknown = 0,
     Keyword = 1,
@@ -10,7 +10,7 @@ pub enum TokenType {
     StringConst = 5,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum KeywordType {
     Unknown = 0,
     Class = 1,
@@ -38,18 +38,17 @@ pub enum KeywordType {
 
 pub struct Tokenizer {
     lines: Vec<String>,
-    line_idx: isize,
-    char_idx: isize,
+    line_idx: usize,
+    char_idx: usize,
     token_type: TokenType,
     keyword_type: KeywordType,
-    token: String,
+    pub token: String,
     int_token: u16,
 }
 
 impl Tokenizer {
     pub fn build(input: &str) -> Result<Tokenizer, Box<dyn Error>> {
-        let contents = fs::read_to_string(input)?;
-        let lines = contents
+        let lines = input 
             .split("\n")
             .into_iter()
             .map(|line| line.trim())
@@ -62,10 +61,11 @@ impl Tokenizer {
                 }
             })
             .collect();
+
         Ok(Tokenizer {
             lines,
-            line_idx: -1,
-            char_idx: -1,
+            line_idx: 0,
+            char_idx: 0,
             token_type: TokenType::Unknown,
             keyword_type: KeywordType::Unknown,
             token: String::from(""),
@@ -74,7 +74,7 @@ impl Tokenizer {
     }
 
     pub fn has_more_tokens(&self) -> bool {
-        if (self.line_idx as usize) < self.lines.len() {
+        if self.line_idx < self.lines.len() {
             return true;
         }
 
@@ -83,6 +83,7 @@ impl Tokenizer {
 
     pub fn advance(&mut self) {
         if !self.has_more_tokens() {
+            println!("Parser: no more tokens left.");
             return;
         }
 
@@ -91,11 +92,24 @@ impl Tokenizer {
         self.keyword_type = KeywordType::Unknown;
         self.int_token = 0;
 
-        let mut token = String::from("");
+        let advance_char = |s: &mut Tokenizer| {
+            // advance to next character
+            if s.char_idx == s.lines[s.line_idx].len() - 1 {
+                s.line_idx = s.line_idx + 1;
+                s.char_idx = 0;
+                // println!("advance line!");
+            } else {
+                s.char_idx = s.char_idx + 1;
+                // println!("advance char");
+            }
+        };
+       
         loop {
-            let res = self.lines[self.line_idx as usize]
+            println!("l{} c{}", self.lines[self.line_idx].len(), self.char_idx);
+
+            let res = self.lines[self.line_idx]
                 .chars()
-                .nth(self.char_idx as usize);
+                .nth(self.char_idx);
 
             let ch = match res {
                 Some(c) => c,
@@ -109,42 +123,48 @@ impl Tokenizer {
             match ch {
                 '{' | '}' | '(' | ')' | '[' | ']' | '.' | ',' | ';' | '+' | '-' | '*' | '/'
                 | '&' | '|' | '<' | '>' | '=' | '~' => {
-                    if token != "" {
-                        break;
-                    } else {
-                        // add all other symbols
+                    if self.token == "" {
+                        // Token is read. 
                         self.token_type = TokenType::Symbol;
                         self.token = String::from(ch);
+                        advance_char(self);
+                        println!("found symbol {}", ch);
                     }
-                }
-                ' ' => {
                     break;
                 }
+                ' ' => {
+                    if self.token != "" {
+                        // Token already being built -> stop if you encounter a symbol
+                        // println!("break space: {}", self.token);
+                        break;
+                    }
+                    // println!("break space no token: {}", self.token);
+                }
                 _ => {
-                    token.push(
-                        self.lines[self.line_idx as usize]
+                    // println!("char:{}.", ch);
+                    self.token.push(
+                        self.lines[self.line_idx]
                             .chars()
-                            .nth(self.char_idx as usize)
+                            .nth(self.char_idx)
                             .unwrap(),
                     );
                 }
             }
+            
+            advance_char(self);
         }
         
-        // advance to next character
-        if (self.char_idx as usize) == self.lines[self.line_idx as usize].len() {
-            self.line_idx = self.line_idx + 1;
-            self.char_idx = 0;
-        } else {
-            self.char_idx = self.char_idx + 1;
-        }
 
         // determine the token type
-        self.token = token;
         self.determine_token_type();
+        println!("Token: {}", self.token);
     }
 
     fn determine_token_type(&mut self) {
+        if self.token_type == TokenType::Symbol {
+            return;
+        }
+
         // check if keyword
         self.keyword_type = match self.token.as_str() {
             "class" => KeywordType::Class,
