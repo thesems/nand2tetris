@@ -105,8 +105,6 @@ impl Tokenizer {
         };
        
         loop {
-            println!("l{} c{}", self.lines[self.line_idx].len(), self.char_idx);
-
             let res = self.lines[self.line_idx]
                 .chars()
                 .nth(self.char_idx);
@@ -128,7 +126,7 @@ impl Tokenizer {
                         self.token_type = TokenType::Symbol;
                         self.token = String::from(ch);
                         advance_char(self);
-                        println!("found symbol {}", ch);
+                        // println!("found symbol {}", ch);
                     }
                     break;
                 }
