@@ -119,4 +119,10 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_compilation_engine() {
+        // let input = "class Test {\nfield int myx;\nmethod main(myvar) {\nvar int x;\nlet x = 4;\n}\n}\n";
+        // let mut tokenizer = tokenizer::Tokenizer::build(input).unwrap();
+    }
 }

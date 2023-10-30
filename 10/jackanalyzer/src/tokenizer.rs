@@ -43,7 +43,7 @@ pub struct Tokenizer {
     token_type: TokenType,
     keyword_type: KeywordType,
     pub token: String,
-    int_token: u16,
+    pub int_token: u16,
 }
 
 impl Tokenizer {
