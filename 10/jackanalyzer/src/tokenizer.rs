@@ -48,15 +48,21 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn build(input: &str) -> Result<Tokenizer, Box<dyn Error>> {
-        let lines = input 
+        let lines: Vec<String> = input
             .split("\n")
             .into_iter()
             .map(|line| line.trim())
-            .filter(|line| !line.starts_with("//") && !line.is_empty())
+            .filter(|line| {
+                !line.is_empty()
+                    && !line.starts_with("//")
+                    && !line.starts_with("/**")
+                    && !line.starts_with("*")
+                    && !line.starts_with("*/")
+            })
             .map(|line| {
                 let res = line.find("//");
                 match res {
-                    Some(idx) => String::from(line.trim().split_at(idx).0),
+                    Some(idx) => String::from(line.split_at(idx).0.trim()),
                     None => String::from(line.trim()),
                 }
             })
@@ -97,17 +103,14 @@ impl Tokenizer {
             if s.char_idx == s.lines[s.line_idx].len() - 1 {
                 s.line_idx = s.line_idx + 1;
                 s.char_idx = 0;
-                // println!("advance line!");
             } else {
                 s.char_idx = s.char_idx + 1;
-                // println!("advance char");
             }
         };
-       
+
+        let mut is_string = false;
         loop {
-            let res = self.lines[self.line_idx]
-                .chars()
-                .nth(self.char_idx);
+            let res = self.lines[self.line_idx].chars().nth(self.char_idx);
 
             let ch = match res {
                 Some(c) => c,
@@ -118,28 +121,44 @@ impl Tokenizer {
                 }
             };
 
+            // Check if a string quote has been encountered
+            if ch == '"' {
+                is_string = !is_string;
+                advance_char(self);
+                continue;
+            }
+
+            // If currently processing a string constant, add character and continue.
+            if is_string {
+                self.token.push(
+                    self.lines[self.line_idx]
+                        .chars()
+                        .nth(self.char_idx)
+                        .unwrap(),
+                );
+                self.token_type = TokenType::StringConst;
+                advance_char(self);
+                continue;
+            }
+
             match ch {
                 '{' | '}' | '(' | ')' | '[' | ']' | '.' | ',' | ';' | '+' | '-' | '*' | '/'
                 | '&' | '|' | '<' | '>' | '=' | '~' => {
                     if self.token == "" {
-                        // Token is read. 
+                        // Token is read.
                         self.token_type = TokenType::Symbol;
                         self.token = String::from(ch);
                         advance_char(self);
-                        // println!("found symbol {}", ch);
                     }
                     break;
                 }
                 ' ' => {
                     if self.token != "" {
                         // Token already being built -> stop if you encounter a symbol
-                        // println!("break space: {}", self.token);
                         break;
                     }
-                    // println!("break space no token: {}", self.token);
                 }
                 _ => {
-                    // println!("char:{}.", ch);
                     self.token.push(
                         self.lines[self.line_idx]
                             .chars()
@@ -148,18 +167,17 @@ impl Tokenizer {
                     );
                 }
             }
-            
+
             advance_char(self);
         }
-        
 
         // determine the token type
         self.determine_token_type();
-        println!("Token: {}", self.token);
+        // println!("Token: {}", self.token);
     }
 
     fn determine_token_type(&mut self) {
-        if self.token_type == TokenType::Symbol {
+        if self.token_type == TokenType::Symbol || self.token_type == TokenType::StringConst {
             return;
         }
 

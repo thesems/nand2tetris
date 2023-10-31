@@ -11,14 +11,11 @@ pub mod tests;
 fn main() {
     let args: Vec<String> = env::args().collect();
     let config = {
-        let input = args[0].clone();
-        let output = args[1].clone();
-        let output_xml_tokenizer = args[2].clone();
-        Config { input, output, output_xml_tokenizer }
+        let input = args[1].clone();
+        Config { input }
     };
-    let analyzer = analyzer::Analyzer::build(config).unwrap_or_else(|_err| {
+    analyzer::Analyzer::run(config).unwrap_or_else(|err| {
+        println!("Error occured: {}", err);
         process::exit(1);
     });
-    
-    analyzer.run();
 }

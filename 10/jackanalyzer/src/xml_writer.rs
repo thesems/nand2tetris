@@ -41,12 +41,12 @@ impl XmlWriter {
     }
 
     pub fn write_full_tag(&mut self, tag_name: &str) -> Result<()> {
-        write!(self.file, "{}", tag_name)?;
+        write!(self.file, "{}\n", tag_name)?;
         Ok(())
     }
     
     fn write_tags(&mut self, tag_name: &str, content: &str) -> Result<()> {
-        write!(self.file, "<{}> {} </{}>", tag_name, content, tag_name)?;
+        write!(self.file, "<{}> {} </{}>\n", tag_name, content, tag_name)?;
         Ok(())
     }
 }
