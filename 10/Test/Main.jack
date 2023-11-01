@@ -1,0 +1,9 @@
+class main {
+    field int x, y;
+
+    function int x() {
+        var int z;
+	let z = x + y;
+	return z;
+    }
+}

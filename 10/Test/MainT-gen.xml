@@ -1,0 +1,33 @@
+<tokens>
+<keyword> class </keyword>
+<identifier> main </identifier>
+<symbol> { </symbol>
+<keyword> field </keyword>
+<keyword> int </keyword>
+<identifier> x </identifier>
+<symbol> , </symbol>
+<identifier> y </identifier>
+<symbol> ; </symbol>
+<keyword> function </keyword>
+<keyword> int </keyword>
+<identifier> x </identifier>
+<symbol> ( </symbol>
+<symbol> ) </symbol>
+<symbol> { </symbol>
+<keyword> var </keyword>
+<keyword> int </keyword>
+<identifier> z </identifier>
+<symbol> ; </symbol>
+<keyword> let </keyword>
+<identifier> z </identifier>
+<symbol> = </symbol>
+<identifier> x </identifier>
+<symbol> + </symbol>
+<identifier> y </identifier>
+<symbol> ; </symbol>
+<keyword> return </keyword>
+<identifier> z </identifier>
+<symbol> ; </symbol>
+<symbol> } </symbol>
+<symbol> } </symbol>
+</tokens>

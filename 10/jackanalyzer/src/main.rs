@@ -14,7 +14,7 @@ fn main() {
         let input = args[1].clone();
         Config { input }
     };
-    analyzer::Analyzer::run(config).unwrap_or_else(|err| {
+    analyzer::run(config).unwrap_or_else(|err| {
         println!("Error occured: {}", err);
         process::exit(1);
     });

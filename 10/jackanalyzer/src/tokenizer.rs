@@ -79,6 +79,15 @@ impl Tokenizer {
         })
     }
 
+    pub fn reset(&mut self) {
+        self.line_idx = 0;
+        self.char_idx = 0;
+        self.token_type = TokenType::Unknown;
+        self.keyword_type = KeywordType::Unknown;
+        self.token = String::from("");
+        self.int_token = 0;
+    }
+
     pub fn has_more_tokens(&self) -> bool {
         if self.line_idx < self.lines.len() {
             return true;
