@@ -3,7 +3,7 @@ class main {
 
     function int x() {
         var int z;
-	let z = x + y;
-	return z;
+	    // let z = x + y;
+	    return z;
     }
 }

@@ -14,6 +14,26 @@
 <keyword> function </keyword>
 <keyword> int </keyword>
 <identifier> x </identifier>
+<parameterList>
 <symbol> ( </symbol>
 <symbol> ) </symbol>
+</parameterList>
 <symbol> { </symbol>
+<varDec>
+<keyword> var </keyword>
+<keyword> int </keyword>
+<identifier> z </identifier>
+<symbol> ; </symbol>
+</varDec>
+<statements>
+<returnStatement>
+<keyword> return </keyword>
+<expression>
+<identifier> z </identifier>
+</expression>
+<symbol> ; </symbol>
+</returnStatement>
+</statements>
+<symbol> } </symbol>
+</subroutineDec>
+</class>
