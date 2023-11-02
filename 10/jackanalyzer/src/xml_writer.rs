@@ -7,7 +7,7 @@ pub struct XmlWriter {
 }
 impl XmlWriter {
     pub fn build(out_path: &str) -> Result<XmlWriter> {
-        let file = std::fs::File::options().create(true).write(true).open(out_path)?;
+        let file = std::fs::File::options().create(true).append(false).write(true).open(out_path)?;
         Ok(XmlWriter { file })
     }
 

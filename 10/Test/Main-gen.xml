@@ -21,15 +21,49 @@
 <symbol> { </symbol>
 <varDec>
 <keyword> var </keyword>
+<identifier> String </identifier>
+<identifier> mystr </identifier>
+<symbol> ; </symbol>
+</varDec>
+<varDec>
+<keyword> var </keyword>
 <keyword> int </keyword>
 <identifier> z </identifier>
 <symbol> ; </symbol>
 </varDec>
 <statements>
+<letStatement>
+<keyword> let </keyword>
+<identifier> mystr </identifier>
+<symbol> = </symbol>
+<expression>
+<term>
+<stringConstant> hello </stringConstant>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
+<letStatement>
+<keyword> let </keyword>
+<identifier> z </identifier>
+<symbol> = </symbol>
+<expression>
+<term>
+<identifier> x </identifier>
+</term>
+<symbol> + </symbol>
+<term>
+<identifier> y </identifier>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
 <returnStatement>
 <keyword> return </keyword>
 <expression>
+<term>
 <identifier> z </identifier>
+</term>
 </expression>
 <symbol> ; </symbol>
 </returnStatement>

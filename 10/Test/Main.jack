@@ -2,8 +2,10 @@ class main {
     field int x, y;
 
     function int x() {
+        var String mystr;
         var int z;
-	    // let z = x + y;
+        let mystr = "hello";
+        let z = x + y;
 	    return z;
     }
 }

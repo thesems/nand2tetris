@@ -70,6 +70,7 @@ impl<'a> CompilationEngine<'a> {
         // keyword: variable type
         // TODO: class as a type
         self.tokenizer.advance();
+
         let allowed_keywords = vec!["int", "char", "boolean"];
         if self.tokenizer.token_type() != TokenType::Keyword
             || !allowed_keywords.contains(&self.tokenizer.token.as_str())
@@ -189,8 +190,14 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        self.compile_var_dec();
-        
+        loop {
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "var" {
+                break;
+            }
+            self.compile_var_dec();
+        }
+
         self.xml_writer.write_full_tag("<statements>");
         self.compile_statements();
         self.xml_writer.write_full_tag("</statements>");
@@ -207,19 +214,13 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_var_dec(&mut self) {
         self.xml_writer.write_full_tag("<varDec>");
-        self.tokenizer.advance();
-        if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "var" {
-            panic!(
-                "ERROR: expected keyword var, but received {}",
-                self.tokenizer.token
-            );
-        }
         self.write_token();
 
         self.tokenizer.advance();
         let allowed_keywords = vec!["int", "string", "bool"];
-        // TODO: missing className
-        if self.tokenizer.token_type() != TokenType::Keyword
+
+        if self.tokenizer.token_type() != TokenType::Identifier
+            && self.tokenizer.token_type() != TokenType::Keyword
             && !allowed_keywords.contains(&&self.tokenizer.token.as_str())
         {
             panic!(
@@ -251,7 +252,6 @@ impl<'a> CompilationEngine<'a> {
                 );
             }
 
-            self.tokenizer.advance();
             self._compile_identifier(
                 format!(
                     "ERROR: expected a variable name identifier, but received {}.",
@@ -264,35 +264,78 @@ impl<'a> CompilationEngine<'a> {
     }
 
     pub fn compile_statements(&mut self) {
-        self.tokenizer.advance();
-        if self.tokenizer.token_type() != TokenType::Keyword {
-            panic!("ERROR: a statement must include a keyword: let, if, while, do, return. Received {}.", self.tokenizer.token);
-        }
+        loop {
+            if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "}" {
+                break;
+            } else if self.tokenizer.token_type() != TokenType::Keyword {
+                panic!("ERROR: a statement must include a keyword: let, if, while, do, return. Received {}.", self.tokenizer.token);
+            }
 
-        match self.tokenizer.token.as_str() {
-            "let" => {
-                self.compile_let();
+            match self.tokenizer.token.as_str() {
+                "let" => {
+                    self.compile_let();
+                }
+                "if" => {
+                    self.compile_if();
+                }
+                "while" => {
+                    self.compile_while();
+                }
+                "do" => {
+                    self.compile_do();
+                }
+                "return" => {
+                    self.compile_return();
+                }
+                _ => {
+                    panic!(
+                        "ERROR: unrecongnized statement keyword: {}",
+                        self.tokenizer.token
+                    );
+                }
             }
-            "if" => {
-                self.compile_if();
-            }
-            "while" => {
-                self.compile_while();
-            }
-            "do" => {
-                self.compile_do();
-            }
-            "return" => {
-                self.compile_return();
-            }
-            _ => {
-                panic!("ERROR: unregocognized statement keyword!");
-            }
+            self.tokenizer.advance();
         }
     }
 
     pub fn compile_let(&mut self) {
         self.xml_writer.write_full_tag("<letStatement>");
+        self.write_token();
+
+        self._compile_identifier("ERROR: expected an existing variable name.");
+
+        self.tokenizer.advance();
+        if self.tokenizer.token_type() != TokenType::Symbol {
+            panic!("ERROR: expected a symbol '=' or array deferencing '['.");
+        }
+
+        if self.tokenizer.token == "[" {
+            self.write_token();
+
+            self.tokenizer.advance();
+            self.compile_expression();
+
+            if self.tokenizer.token != "=" || self.tokenizer.token_type() != TokenType::Symbol {
+                panic!("ERROR: expected an equal '=' symbol after variable name.");
+            }
+            self.write_token();
+        } else if self.tokenizer.token == "=" {
+            self.write_token();
+        } else {
+            panic!("ERROR: expected a symbol '=' or array deferencing '['.");
+        }
+
+        self.tokenizer.advance();
+        self.compile_expression();
+
+        if self.tokenizer.token != ";" || self.tokenizer.token_type() != TokenType::Symbol {
+            panic!(
+                "ERROR: expected a semi-colon ';' symbol, but received: {}",
+                self.tokenizer.token
+            );
+        }
+        self.write_token();
+
         self.xml_writer.write_full_tag("</letStatement>");
     }
 
@@ -303,6 +346,22 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_while(&mut self) {
         self.xml_writer.write_full_tag("<whileStatement>");
+        self.write_token();
+
+        self.tokenizer.advance();
+        if self.tokenizer.token != "(" || self.tokenizer.token_type() != TokenType::Symbol {
+            panic!("ERROR: expected opening bracket after keyword while!");
+        }
+        self.write_token();
+
+        self.tokenizer.advance();
+        self.compile_expression();
+
+        if self.tokenizer.token != ")" || self.tokenizer.token_type() != TokenType::Symbol {
+            panic!("ERROR: expected closing bracket after keyword while!");
+        }
+        self.write_token();
+
         self.xml_writer.write_full_tag("</whileStatement>");
     }
 
@@ -322,9 +381,11 @@ impl<'a> CompilationEngine<'a> {
         if self.tokenizer.token_type() != TokenType::Symbol {
             self.compile_expression();
 
-            self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol {
-                panic!("ERROR: expected a semi-colon, but received {}.", self.tokenizer.token); 
+                panic!(
+                    "ERROR: expected a semi-colon, but received {}.",
+                    self.tokenizer.token
+                );
             }
         }
 
@@ -341,13 +402,115 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_expression(&mut self) {
         self.xml_writer.write_full_tag("<expression>");
-        self.write_token();
-        // TODO: make it sane pls
+        self.compile_term();
+
+        let symbols = vec!["+", "-", "*", "/", "&", "|", "<", ">", "="];
+        if self.tokenizer.token_type() == TokenType::Symbol
+            && symbols.contains(&&self.tokenizer.token.as_str())
+        {
+            self.write_token();
+            self.tokenizer.advance();
+
+            self.compile_term();
+        }
+
         self.xml_writer.write_full_tag("</expression>");
     }
 
     pub fn compile_term(&mut self) {
         self.xml_writer.write_full_tag("<term>");
+
+        let keyword_constants = vec!["true", "false", "null", "this"];
+        let unary_op = vec!["-", "~"];
+
+        let safe_exit = |s: &mut CompilationEngine| {
+            s.xml_writer.write_full_tag("</term>");
+            s.tokenizer.advance();
+        };
+
+        if self.tokenizer.token_type() == TokenType::IntConst {
+            self.write_token();
+            safe_exit(self);
+            return;
+        } else if self.tokenizer.token_type() == TokenType::Keyword {
+            if !keyword_constants.contains(&&self.tokenizer.token.as_str()) {
+                panic!("ERROR: non-allowed keyword.");
+            }
+            self.write_token();
+            safe_exit(self);
+            return;
+        } else if self.tokenizer.token_type() == TokenType::StringConst {
+            self.write_token();
+            safe_exit(self);
+            return;
+        } else if self.tokenizer.token_type() == TokenType::Symbol
+            && unary_op.contains(&&self.tokenizer.token.as_str())
+        {
+            self.write_token();
+            self.tokenizer.advance();
+            self.compile_term();
+            safe_exit(self);
+            return;
+        } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "(" {
+            // TODO: handle ( expression )
+            safe_exit(self);
+        } else if self.tokenizer.token_type() == TokenType::Identifier {
+            self.write_token();
+        } else {
+            panic!(
+                "ERROR: expected an identifier but received {}",
+                self.tokenizer.token
+            );
+        }
+
+        self.tokenizer.advance();
+
+        if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "[" {
+            self.write_token();
+            self.tokenizer.advance();
+            self.compile_expression();
+
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "]" {
+                panic!("ERROR: expected a closing square bracket after expression.");
+            }
+            self.write_token();
+        } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "(" {
+            self.write_token();
+            self.tokenizer.advance();
+            self.compile_expression_list();
+
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
+                panic!("ERROR: expected a closing bracket after expression list.");
+            }
+            self.write_token();
+        } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
+            self.write_token();
+
+            self._compile_identifier(
+                "ERROR: expected a subroutine name identifier after dot '.' symbol.",
+            );
+
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
+                panic!("ERROR: expected an opening bracket after expression list.");
+            }
+            self.write_token();
+
+            self.compile_expression_list();
+
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
+                panic!("ERROR: expected a closing bracket after expression list.");
+            }
+            self.write_token();
+        } else {
+            self.xml_writer.write_full_tag("</term>");
+            return;
+        }
+       
+        self.tokenizer.advance();
         self.xml_writer.write_full_tag("</term>");
     }
 
@@ -362,6 +525,10 @@ impl<'a> CompilationEngine<'a> {
             panic!("{}", message);
         }
         self.write_token();
+    }
+
+    fn _compile_subroutine_call(&mut self) {
+        self._compile_identifier("ERROR: expected a identifier.");
     }
 
     fn write_token(&mut self) {
