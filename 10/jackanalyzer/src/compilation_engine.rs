@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::{
-    tokenizer::{TokenType, Tokenizer},
+    tokenizer::{KeywordType, TokenType, Tokenizer},
     xml_writer::XmlWriter,
 };
 
@@ -33,8 +33,9 @@ impl<'a> CompilationEngine<'a> {
             message, self.tokenizer.line_idx, token
         );
         println!(
-            "Line: {}",
-            self.tokenizer.lines[self.tokenizer.line_idx - 1]
+            "Lines:\n    {}\n    {}",
+            self.tokenizer.lines[self.tokenizer.line_idx-1],
+            self.tokenizer.lines[self.tokenizer.line_idx]
         );
         panic!("");
     }
@@ -44,10 +45,7 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "class" {
-            panic!(
-                "Error encountered. Expected keyword class, but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected keyword class.");
         }
         self.write_token();
 
@@ -55,14 +53,14 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "{" {
-            panic!("Error encountered. Expected a symbol {{.",);
+            self.print_compile_error("Expected a symbol {{.");
         }
         self.write_token();
 
+        self.tokenizer.advance();
         while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "}") {
-            self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Keyword {
-                panic!("Received {}, but expected one of the following keywords: static, field, constructor, method, function.", self.tokenizer.token);
+                self.print_compile_error("Expected one of the following keywords: static, field, constructor, method, function.");
             }
             match self.tokenizer.token.as_str() {
             "static" | "field" => {
@@ -71,9 +69,15 @@ impl<'a> CompilationEngine<'a> {
             "constructor" | "function" | "method" => {
                 self.compile_subroutine_dec();
             }
-            _ => panic!("Received {}, but expected one of the following keywords: static, field, constructor, method, function.", self.tokenizer.token)
+            _ => self.print_compile_error("Expected one of the following keywords: static, field, constructor, method, function.")
         };
+            self.tokenizer.advance();
         }
+
+        if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "}" {
+            self.print_compile_error("Expected a symbol }.");
+        }
+        self.write_token();
 
         self.xml_writer.write_full_tag("</class>");
     }
@@ -104,10 +108,7 @@ impl<'a> CompilationEngine<'a> {
         loop {
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol {
-                panic!(
-                    "ERROR: Expected an symbol, but received: {}!",
-                    self.tokenizer.token
-                );
+                self.print_compile_error("Expected a symbol.");
             }
 
             if self.tokenizer.token == ";" {
@@ -116,10 +117,7 @@ impl<'a> CompilationEngine<'a> {
             }
 
             if self.tokenizer.token != "," {
-                panic!(
-                    "ERROR: expected a symbol ',' but received: {}",
-                    self.tokenizer.token
-                );
+                self.print_compile_error("Expected a comma.");
             }
 
             self.write_token();
@@ -147,34 +145,23 @@ impl<'a> CompilationEngine<'a> {
         if self.tokenizer.token_type() != TokenType::Keyword
             || !allowed_keywords.contains(&&self.tokenizer.token.as_str())
         {
-            panic!("Error encountered. Expected a keyword: constructor, function or method, but received: {}", self.tokenizer.token);
+            self.print_compile_error("Expected a keyword: constructor, function or method.");
         }
         self.write_token();
 
-        // TODO: class as a type
         self.tokenizer.advance();
         let allowed_keywords = vec!["void", "int", "char", "boolean"];
-        if self.tokenizer.token_type() != TokenType::Keyword
+        if self.tokenizer.token_type() != TokenType::Identifier
+            && self.tokenizer.token_type() != TokenType::Keyword
             && !allowed_keywords.contains(&&self.tokenizer.token.as_str())
         {
-            panic!(
-                "Error encountered. Expected a variable type, but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected a variable type.");
         }
         self.write_token();
 
         // subroutineName
-        self._compile_identifier("ERROR: expected a subroutine identifier name.");
+        self._compile_identifier("Expected a subroutine identifier name.");
 
-        self.compile_parameter_list();
-        self.compile_subroutine_body();
-
-        self.xml_writer.write_full_tag("</subroutineDec>");
-    }
-
-    pub fn compile_parameter_list(&mut self) {
-        self.xml_writer.write_full_tag("<parameterList>");
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
             panic!(
@@ -184,25 +171,50 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        // TODO: handle parameters
+        self.compile_parameter_list();
 
-        self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-            panic!(
-                "Expected an closing bracket ')' but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected a closing bracket.");
         }
         self.write_token();
+
+        self.compile_subroutine_body();
+
+        self.xml_writer.write_full_tag("</subroutineDec>");
+    }
+
+    pub fn compile_parameter_list(&mut self) {
+        self.xml_writer.write_full_tag("<parameterList>");
+
+        self.tokenizer.advance();
+        while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")") {
+            let allowed_keywords = vec!["void", "int", "char", "boolean"];
+            if self.tokenizer.token_type() != TokenType::Identifier
+                && self.tokenizer.token_type() != TokenType::Keyword
+                && !allowed_keywords.contains(&&self.tokenizer.token.as_str())
+            {
+                self.print_compile_error("Expected a variable type.");
+            }
+            self.write_token();
+
+            self._compile_identifier("Expected a parameter name identifier.");
+
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "," {
+                self.write_token();
+                self.tokenizer.advance();
+            }
+        }
+
         self.xml_writer.write_full_tag("</parameterList>");
     }
 
     pub fn compile_subroutine_body(&mut self) {
+        self.xml_writer.write_full_tag("<subroutineBody>");
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "{" {
-            panic!(
-                "ERROR: function body must start with an opening curly bracket '{{' but received: {}",
-                self.tokenizer.token
+            self.print_compile_error(
+                "Expected the function body to start with an opening curly bracket '{{'.",
             );
         }
         self.write_token();
@@ -215,18 +227,15 @@ impl<'a> CompilationEngine<'a> {
             self.compile_var_dec();
         }
 
-        self.xml_writer.write_full_tag("<statements>");
         self.compile_statements();
-        self.xml_writer.write_full_tag("</statements>");
 
-        self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "}" {
-            panic!(
-                "ERROR: function body must start with an closed curly bracket '}}', but received: {}",
-                self.tokenizer.token
+            self.print_compile_error(
+                "Expected the function body to start with a closed curly bracket '}}'.",
             );
         }
         self.write_token();
+        self.xml_writer.write_full_tag("</subroutineBody>");
     }
 
     pub fn compile_var_dec(&mut self) {
@@ -240,10 +249,7 @@ impl<'a> CompilationEngine<'a> {
             && self.tokenizer.token_type() != TokenType::Keyword
             && !allowed_keywords.contains(&&self.tokenizer.token.as_str())
         {
-            panic!(
-                "Error encountered. Expected a variable type, but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected a variable type.");
         }
         self.write_token();
 
@@ -263,11 +269,9 @@ impl<'a> CompilationEngine<'a> {
             }
 
             if !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ",") {
-                panic!(
-                    "ERROR: expected the symbol ',' comma, but received: {}",
-                    self.tokenizer.token
-                );
+                self.print_compile_error("Expected a comma after a variable name identifier.");
             }
+            self.write_token();
 
             self._compile_identifier(
                 format!(
@@ -281,35 +285,42 @@ impl<'a> CompilationEngine<'a> {
     }
 
     pub fn compile_statements(&mut self) {
+        self.xml_writer.write_full_tag("<statements>");
         loop {
             if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "}" {
                 break;
             } else if self.tokenizer.token_type() != TokenType::Keyword {
-                self.print_compile_error(format!("A statement must include a keyword: let, if, while, do, return. Received {}.", self.tokenizer.token).as_str());
+                self.print_compile_error(
+                    "A statement must include a keyword: let, if, while, do, return.",
+                );
             }
 
             match self.tokenizer.token.as_str() {
                 "let" => {
                     self.compile_let();
+                    self.tokenizer.advance();
                 }
                 "if" => {
                     self.compile_if();
                 }
                 "while" => {
                     self.compile_while();
+                    self.tokenizer.advance();
                 }
                 "do" => {
                     self.compile_do();
+                    self.tokenizer.advance();
                 }
                 "return" => {
                     self.compile_return();
+                    self.tokenizer.advance();
                 }
                 _ => {
                     self.print_compile_error("Unrecongnized statement keyword.");
                 }
             }
-            self.tokenizer.advance();
         }
+        self.xml_writer.write_full_tag("</statements>");
     }
 
     pub fn compile_let(&mut self) {
@@ -360,6 +371,59 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_if(&mut self) {
         self.xml_writer.write_full_tag("<ifStatement>");
+        self.write_token();
+
+        self.tokenizer.advance();
+        if self.tokenizer.token != "(" || self.tokenizer.token_type() != TokenType::Symbol {
+            panic!("ERROR: expected opening bracket after keyword if!");
+        }
+        self.write_token();
+
+        self.tokenizer.advance();
+
+        self.compile_expression();
+
+        if self.tokenizer.token != ")" || self.tokenizer.token_type() != TokenType::Symbol {
+            self.print_compile_error("Expected closing bracket after keyword f!");
+        }
+        self.write_token();
+
+        self.tokenizer.advance();
+        if self.tokenizer.token != "{" || self.tokenizer.token_type() != TokenType::Symbol {
+            self.print_compile_error("Expected an opening curvy bracket after keyword if!");
+        }
+        self.write_token();
+
+        self.tokenizer.advance();
+        self.compile_statements();
+
+        if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
+            self.print_compile_error("Expected an closing curvy bracket after keyword if.");
+        }
+        self.write_token();
+
+        self.tokenizer.advance();
+        if self.tokenizer.token_type() == TokenType::Keyword
+            && self.tokenizer.keyword() == KeywordType::Else
+        {
+            self.write_token();
+
+            self.tokenizer.advance();
+            if self.tokenizer.token != "{" || self.tokenizer.token_type() != TokenType::Symbol {
+                self.print_compile_error("Expected an opening curvy bracket after keyword if!");
+            }
+            self.write_token();
+
+            self.tokenizer.advance();
+            self.compile_statements();
+
+            if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
+                self.print_compile_error("Expected an closing curvy bracket after keyword if.");
+            }
+            self.write_token();
+            self.tokenizer.advance();
+        }
+
         self.xml_writer.write_full_tag("</ifStatement>");
     }
 
@@ -421,9 +485,7 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
         self.tokenizer.advance();
 
-        if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-            self.compile_expression_list();
-        }
+        self.compile_expression_list();
 
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
             self.print_compile_error("Expected a closing bracket after expression list.");
@@ -490,7 +552,6 @@ impl<'a> CompilationEngine<'a> {
         let keyword_constants = vec!["true", "false", "null", "this"];
         let unary_op = vec!["-", "~"];
 
-
         let safe_exit = |s: &mut CompilationEngine| {
             s.xml_writer.write_full_tag("</term>");
             s.tokenizer.advance();
@@ -517,7 +578,7 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
             self.tokenizer.advance();
             self.compile_term();
-            safe_exit(self);
+            self.xml_writer.write_full_tag("</term>");
             return;
         } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "(" {
             // TODO: handle ( expression )
@@ -525,9 +586,7 @@ impl<'a> CompilationEngine<'a> {
         } else if self.tokenizer.token_type() == TokenType::Identifier {
             self.write_token();
         } else {
-            self.print_compile_error(
-                "Expected an identifier.",
-            );
+            self.print_compile_error("Expected an identifier.");
         }
 
         self.tokenizer.advance();
@@ -566,26 +625,17 @@ impl<'a> CompilationEngine<'a> {
 
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
-                self.print_compile_error(
-                    format!(
-                        "Expected an opening bracket after expression list, but received: {}",
-                        self.tokenizer.token
-                    )
-                    .as_str(),
-                );
+                self.print_compile_error("Expected an opening bracket after expression list.");
             }
             self.write_token();
 
-            self.compile_expression_list();
+            self.tokenizer.advance();
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
+                self.compile_expression_list();
+            }
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-                self.print_compile_error(
-                    format!(
-                        "Expected a closing bracket after expression list, but received: {}",
-                        self.tokenizer.token
-                    )
-                    .as_str(),
-                );
+                self.print_compile_error("Expected a closing bracket after expression list.");
             }
             self.write_token();
         } else {
@@ -600,7 +650,10 @@ impl<'a> CompilationEngine<'a> {
     pub fn compile_expression_list(&mut self) {
         self.xml_writer.write_full_tag("<expressionList>");
 
-        loop {
+        let closing =
+            self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")";
+
+        while !closing {
             self.compile_expression();
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "," {

@@ -6,10 +6,11 @@
 <keyword> function </keyword>
 <keyword> void </keyword>
 <identifier> main </identifier>
-<parameterList>
 <symbol> ( </symbol>
-<symbol> ) </symbol>
+<parameterList>
 </parameterList>
+<symbol> ) </symbol>
+<subroutineBody>
 <symbol> { </symbol>
 <varDec>
 <keyword> var </keyword>
@@ -27,6 +28,7 @@
 <keyword> var </keyword>
 <keyword> int </keyword>
 <identifier> i </identifier>
+<symbol> , </symbol>
 <identifier> sum </identifier>
 <symbol> ; </symbol>
 </varDec>
@@ -44,7 +46,7 @@
 <expressionList>
 <expression>
 <term>
-</term>
+<stringConstant> HOW MANY NUMBERS?  </stringConstant>
 </term>
 </expression>
 </expressionList>
@@ -66,7 +68,7 @@
 <expressionList>
 <expression>
 <term>
-</term>
+<identifier> length </identifier>
 </term>
 </expression>
 </expressionList>
@@ -100,6 +102,7 @@
 </expression>
 <symbol> ) </symbol>
 <symbol> { </symbol>
+<statements>
 <letStatement>
 <keyword> let </keyword>
 <identifier> a </identifier>
@@ -120,7 +123,7 @@
 <expressionList>
 <expression>
 <term>
-</term>
+<stringConstant> ENTER THE NEXT NUMBER:  </stringConstant>
 </term>
 </expression>
 </expressionList>
@@ -144,6 +147,7 @@
 </expression>
 <symbol> ; </symbol>
 </letStatement>
+</statements>
 <symbol> } </symbol>
 </whileStatement>
 <letStatement>
@@ -182,6 +186,7 @@
 </expression>
 <symbol> ) </symbol>
 <symbol> { </symbol>
+<statements>
 <letStatement>
 <keyword> let </keyword>
 <identifier> sum </identifier>
@@ -219,6 +224,7 @@
 </expression>
 <symbol> ; </symbol>
 </letStatement>
+</statements>
 <symbol> } </symbol>
 </whileStatement>
 <doStatement>
@@ -263,6 +269,8 @@
 <symbol> . </symbol>
 <identifier> println </identifier>
 <symbol> ( </symbol>
+<expressionList>
+</expressionList>
 <symbol> ) </symbol>
 <symbol> ; </symbol>
 </doStatement>
@@ -272,5 +280,7 @@
 </returnStatement>
 </statements>
 <symbol> } </symbol>
+</subroutineBody>
 </subroutineDec>
+<symbol> } </symbol>
 </class>
