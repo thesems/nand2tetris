@@ -37,8 +37,8 @@ pub enum KeywordType {
 }
 
 pub struct Tokenizer {
-    lines: Vec<String>,
-    line_idx: usize,
+    pub lines: Vec<String>,
+    pub line_idx: usize,
     char_idx: usize,
     token_type: TokenType,
     keyword_type: KeywordType,
@@ -67,7 +67,7 @@ impl Tokenizer {
                 }
             })
             .collect();
-
+        
         Ok(Tokenizer {
             lines,
             line_idx: 0,
@@ -124,9 +124,7 @@ impl Tokenizer {
             let ch = match res {
                 Some(c) => c,
                 None => {
-                    // if we ran out of chars in this line, exit loop
-                    println!("Prematurely exited the building token loop.");
-                    break;
+                    panic!("Prematurely exited the building token loop.");
                 }
             };
 
