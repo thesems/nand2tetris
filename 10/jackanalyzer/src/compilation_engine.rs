@@ -214,7 +214,7 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "{" {
             self.print_compile_error(
-                "Expected the function body to start with an opening curly bracket '{{'.",
+                "Expected the function body to start with an opening curvy bracket '{{'.",
             );
         }
         self.write_token();
@@ -581,8 +581,16 @@ impl<'a> CompilationEngine<'a> {
             self.xml_writer.write_full_tag("</term>");
             return;
         } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "(" {
-            // TODO: handle ( expression )
+            self.write_token();
+            self.tokenizer.advance();
+            self.compile_expression();
+
+            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
+                panic!("ERROR: expected a closing bracket after expression list.");
+            }
+            self.write_token();
             safe_exit(self);
+            return;
         } else if self.tokenizer.token_type() == TokenType::Identifier {
             self.write_token();
         } else {
@@ -630,9 +638,7 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
 
             self.tokenizer.advance();
-            if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-                self.compile_expression_list();
-            }
+            self.compile_expression_list();
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
                 self.print_compile_error("Expected a closing bracket after expression list.");
@@ -650,15 +656,13 @@ impl<'a> CompilationEngine<'a> {
     pub fn compile_expression_list(&mut self) {
         self.xml_writer.write_full_tag("<expressionList>");
 
-        let closing =
-            self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")";
-
-        while !closing {
+        while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")") {
             self.compile_expression();
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "," {
                 break;
             }
+            self.write_token();
 
             self.tokenizer.advance();
         }

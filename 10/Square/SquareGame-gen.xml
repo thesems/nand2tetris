@@ -41,11 +41,13 @@
 <integerConstant> 0 </integerConstant>
 </term>
 </expression>
+<symbol> , </symbol>
 <expression>
 <term>
 <integerConstant> 0 </integerConstant>
 </term>
 </expression>
+<symbol> , </symbol>
 <expression>
 <term>
 <integerConstant> 30 </integerConstant>
@@ -351,6 +353,8 @@
 <symbol> . </symbol>
 <identifier> keyPressed </identifier>
 <symbol> ( </symbol>
+<expressionList>
+</expressionList>
 <symbol> ) </symbol>
 </term>
 </expression>
@@ -578,8 +582,10 @@
 <term>
 <symbol> ~ </symbol>
 <term>
-</term>
-</term>
+<symbol> ( </symbol>
+<expression>
+<term>
+<identifier> key </identifier>
 </term>
 <symbol> = </symbol>
 <term>
@@ -587,3 +593,51 @@
 </term>
 </expression>
 <symbol> ) </symbol>
+</term>
+</term>
+</expression>
+<symbol> ) </symbol>
+<symbol> { </symbol>
+<statements>
+<letStatement>
+<keyword> let </keyword>
+<identifier> key </identifier>
+<symbol> = </symbol>
+<expression>
+<term>
+<identifier> Keyboard </identifier>
+<symbol> . </symbol>
+<identifier> keyPressed </identifier>
+<symbol> ( </symbol>
+<expressionList>
+</expressionList>
+<symbol> ) </symbol>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
+<doStatement>
+<keyword> do </keyword>
+<identifier> moveSquare </identifier>
+<symbol> ( </symbol>
+<expressionList>
+</expressionList>
+<symbol> ) </symbol>
+<symbol> ; </symbol>
+</doStatement>
+</statements>
+<symbol> } </symbol>
+</whileStatement>
+</statements>
+<symbol> } </symbol>
+</whileStatement>
+<returnStatement>
+<keyword> return </keyword>
+<symbol> ; </symbol>
+</returnStatement>
+</statements>
+<symbol> } </symbol>
+</subroutineBody>
+</subroutineDec>
+<symbol> } </symbol>
+</class>
