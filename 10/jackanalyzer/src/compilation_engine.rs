@@ -34,7 +34,7 @@ impl<'a> CompilationEngine<'a> {
         );
         println!(
             "Lines:\n    {}\n    {}",
-            self.tokenizer.lines[self.tokenizer.line_idx-1],
+            self.tokenizer.lines[self.tokenizer.line_idx - 1],
             self.tokenizer.lines[self.tokenizer.line_idx]
         );
         panic!("");
@@ -96,10 +96,7 @@ impl<'a> CompilationEngine<'a> {
             && self.tokenizer.token_type() != TokenType::Keyword
             && !allowed_keywords.contains(&&self.tokenizer.token.as_str())
         {
-            panic!(
-                "Error encountered. Expected a variable type, but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected a variable type.");
         }
         self.write_token();
 
@@ -129,10 +126,7 @@ impl<'a> CompilationEngine<'a> {
         }
 
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ";" {
-            panic!(
-                "Error encountered. Expected an symbol, but received: {}!",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected an symbol.");
         }
 
         self.xml_writer.write_full_tag("</classVarDec>");
@@ -164,10 +158,7 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
-            panic!(
-                "Expected an opening bracket '(' but received: {}",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected an opening bracket '('.");
         }
         self.write_token();
 
@@ -331,7 +322,7 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol {
-            panic!("ERROR: expected a symbol '=' or array deferencing '['.");
+            self.print_compile_error("Expected a symbol '=' or array deferencing '['.");
         }
 
         if self.tokenizer.token == "[" {
@@ -375,7 +366,7 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token != "(" || self.tokenizer.token_type() != TokenType::Symbol {
-            panic!("ERROR: expected opening bracket after keyword if!");
+            self.print_compile_error("Expected opening bracket after keyword if!");
         }
         self.write_token();
 
@@ -433,7 +424,7 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         if self.tokenizer.token != "(" || self.tokenizer.token_type() != TokenType::Symbol {
-            panic!("ERROR: expected opening bracket after keyword while!");
+            self.print_compile_error("Expected opening bracket after keyword while!");
         }
         self.write_token();
 
@@ -511,18 +502,12 @@ impl<'a> CompilationEngine<'a> {
             self.compile_expression();
 
             if self.tokenizer.token_type() != TokenType::Symbol {
-                panic!(
-                    "ERROR: expected a semi-colon, but received {}.",
-                    self.tokenizer.token
-                );
+                self.print_compile_error("Expected a semi-colon.");
             }
         }
 
         if self.tokenizer.token != ";" {
-            panic!(
-                "ERROR: expected a symbol ';' but received: {}.",
-                self.tokenizer.token
-            );
+            self.print_compile_error("Expected a symbol ';' but received: {}.");
         }
         self.write_token();
 
@@ -563,7 +548,7 @@ impl<'a> CompilationEngine<'a> {
             return;
         } else if self.tokenizer.token_type() == TokenType::Keyword {
             if !keyword_constants.contains(&&self.tokenizer.token.as_str()) {
-                panic!("ERROR: non-allowed keyword.");
+                self.print_compile_error("Non-allowed keyword.");
             }
             self.write_token();
             safe_exit(self);
@@ -586,7 +571,7 @@ impl<'a> CompilationEngine<'a> {
             self.compile_expression();
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-                panic!("ERROR: expected a closing bracket after expression list.");
+                self.print_compile_error("Expected a closing bracket after expression list.");
             }
             self.write_token();
             safe_exit(self);
@@ -621,15 +606,13 @@ impl<'a> CompilationEngine<'a> {
 
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
-                panic!("ERROR: expected a closing bracket after expression list.");
+                self.print_compile_error("Expected a closing bracket after expression list.");
             }
             self.write_token();
         } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
             self.write_token();
 
-            self._compile_identifier(
-                "ERROR: expected a subroutine name identifier after dot '.' symbol.",
-            );
+            self._compile_identifier("Expected a subroutine name identifier after dot '.' symbol.");
 
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
