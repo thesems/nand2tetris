@@ -1,7 +1,7 @@
 use std::{fs, error::Error};
+use std::io::Write;
 
 enum Segment {
-    UNKNOWN,
     CONSTANT,
     ARGUMENT,
     LOCAL,
@@ -34,13 +34,70 @@ impl VmWriter {
         Ok(VmWriter { file })
     }
 
-    pub fn write_push(segment: Segment, index: u16) {}
-    pub fn write_pop(segment: Segment, index: u16) {}
-    pub fn write_arithmetic(op: Operation) {}
-    pub fn write_label(label: &str) {}
-    pub fn write_goto(label: &str) {}
-    pub fn write_if(label: &str) {}
-    pub fn write_call(name: &str, nargs: u16) {}
-    pub fn write_function(name: &str, nvars: u16) {}
-    pub fn write_return() {}
+    pub fn write_push(&mut self, segment: Segment, index: u16) {
+        let segment_str = match segment {
+            Segment::CONSTANT => "constant",
+            Segment::ARGUMENT => "argument",
+            Segment::LOCAL => "local",
+            Segment::STATIC => "static",
+            Segment::THIS => "this",
+            Segment::THAT => "that",
+            Segment::POINTER => "pointer",
+            Segment::TEMP => "temp",
+        };
+        write!(self.file, "push {} {}\n", segment_str, index).unwrap();
+    }
+
+    pub fn write_pop(&mut self, segment: Segment, index: u16) {
+        let segment_str = match segment {
+            Segment::CONSTANT => "constant",
+            Segment::ARGUMENT => "argument",
+            Segment::LOCAL => "local",
+            Segment::STATIC => "static",
+            Segment::THIS => "this",
+            Segment::THAT => "that",
+            Segment::POINTER => "pointer",
+            Segment::TEMP => "temp",
+        };
+        write!(self.file, "pop {} {}\n", segment_str, index).unwrap();
+    }
+
+    pub fn write_arithmetic(&mut self, op: Operation) {
+        let op_str = match op {
+            Operation::ADD => "add",
+            Operation::SUB => "sub",
+            Operation::NEG => "neg",
+            Operation::EQ => "eq",
+            Operation::GT => "gt",
+            Operation::LT => "lt",
+            Operation::AND => "and",
+            Operation::OR => "or",
+            Operation::NOT => "not",
+        };
+        write!(self.file, "{}\n", op_str).unwrap();
+    }
+
+    pub fn write_label(&mut self, label: &str) {
+        write!(self.file, "label {}\n", label).unwrap();
+    }
+
+    pub fn write_goto(&mut self, label: &str) {
+        write!(self.file, "goto {}\n", label).unwrap();
+    }
+
+    pub fn write_if(&mut self, label: &str) {
+        write!(self.file, "if-goto {}\n", label).unwrap();
+    }
+    
+    pub fn write_call(&mut self, name: &str, nargs: u16) {
+        write!(self.file, "call {} {}\n", name, nargs).unwrap();
+    }
+
+    pub fn write_function(&mut self, name: &str, nvars: u16) {
+        write!(self.file, "function {} {}\n", name, nvars).unwrap();
+    }
+
+    pub fn write_return(&mut self) {
+        write!(self.file, "return\n").unwrap();
+    }
 }
