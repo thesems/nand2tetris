@@ -6,6 +6,7 @@ pub mod analyzer;
 pub mod tokenizer;
 pub mod compilation_engine;
 pub mod xml_writer;
+pub mod vm_writer;
 pub mod tests;
 
 fn main() {

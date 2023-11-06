@@ -1,12 +1,13 @@
+use std::error::Error;
 use std::fs::File;
-use std::io::{Result, Write};
+use std::io::Write;
 use crate::tokenizer::TokenType;
 
 pub struct XmlWriter {
     file: File
 }
 impl XmlWriter {
-    pub fn build(out_path: &str) -> Result<XmlWriter> {
+    pub fn build(out_path: &str) -> Result<XmlWriter, Box<dyn Error>> {
         let file = std::fs::File::options().create(true).append(false).write(true).open(out_path)?;
         Ok(XmlWriter { file })
     }
