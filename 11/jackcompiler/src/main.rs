@@ -2,11 +2,12 @@ use std::{env, process};
 
 use config::Config;
 pub mod config;
-pub mod analyzer;
+pub mod compiler;
 pub mod tokenizer;
 pub mod compilation_engine;
 pub mod xml_writer;
 pub mod vm_writer;
+pub mod symbol_table;
 pub mod tests;
 
 fn main() {
@@ -15,7 +16,7 @@ fn main() {
         let input = args[1].clone();
         Config { input }
     };
-    analyzer::run(config).unwrap_or_else(|err| {
+    compiler::run(config).unwrap_or_else(|err| {
         println!("Error occured: {}", err);
         process::exit(1);
     });

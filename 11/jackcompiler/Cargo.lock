@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "jackanalyzer"
+name = "jackcompiler"
 version = "0.1.0"
