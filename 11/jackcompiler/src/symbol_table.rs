@@ -1,31 +1,45 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 #[derive(PartialEq, Clone)]
-enum KindType {
+pub enum KindType {
     STATIC,
     FIELD,
     ARG,
     VAR,
 }
 
-struct SymbolTable {
+impl fmt::Display for KindType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+       match self {
+           KindType::STATIC => write!(f, "static"),
+           KindType::FIELD => write!(f, "field"),
+           KindType::ARG => write!(f, "arg"),
+           KindType::VAR => write!(f, "var"),
+       }
+    }
+}
+
+pub struct SymbolTable {
     vars: HashMap<String, (String, KindType, u16)>,
 }
 
 impl SymbolTable {
-    fn build() -> SymbolTable {
+    pub fn build() -> SymbolTable {
         return SymbolTable{
             vars: HashMap::new(),
         };
     }
-    fn start_subroutine(&mut self) {
+    
+    pub fn start_subroutine(&mut self) {
         self.vars.clear();
     }
-    fn define(&mut self, name: &str, typ: &str, kind: KindType) {
+    
+    pub fn define(&mut self, name: &str, typ: &str, kind: KindType) {
         let index: u16 = self.var_count(&kind);
         self.vars.insert(String::from(name), (String::from(typ), kind, index)); 
     }
-    fn var_count(&self, kind: &KindType) -> u16 {
+    
+    pub fn var_count(&self, kind: &KindType) -> u16 {
         let mut size: u16 = 0;
         for (_, data) in &self.vars {
             if data.1 == *kind {
@@ -34,22 +48,25 @@ impl SymbolTable {
         }
         return size;
     }
-    fn kind_of(&self, name: &str) -> KindType {
-        let data = self.vars.get(name).unwrap_or_else(|| {
-            panic!("Could not find the symbol {}.", name);
-        });
-        return data.1.clone();
+
+    pub fn kind_of(&self, name: &str) -> Option<KindType> {
+        return match self.vars.get(name) {
+            Some(data) => Some(data.1.clone()),
+            None => None
+        }
     }
-    fn type_of(&self, name: &str) -> &str {
-        let data = self.vars.get(name).unwrap_or_else(|| {
-            panic!("Could not find the symbol {}.", name);
-        });
-        return data.0.as_str();
+
+    pub fn type_of(&self, name: &str) -> Option<&str> {
+        return match self.vars.get(name) {
+            Some(data) => Some(data.0.as_str()),
+            None => None
+        }
     }
-    fn index_of(&self, name: &str) -> u16 {
-        let data = self.vars.get(name).unwrap_or_else(|| {
-            panic!("Could not find the symbol {}.", name);
-        });
-        return data.2;
+    
+    pub fn index_of(&self, name: &str) -> Option<u16> {
+        return match self.vars.get(name) {
+            Some(data) => Some(data.2),
+            None => None
+        }
     }
 }

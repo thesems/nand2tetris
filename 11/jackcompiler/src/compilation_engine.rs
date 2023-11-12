@@ -1,6 +1,7 @@
 use std::error::Error;
 
 use crate::{
+    symbol_table::{KindType, SymbolTable},
     tokenizer::{KeywordType, TokenType, Tokenizer},
     xml_writer::XmlWriter,
 };
@@ -8,6 +9,8 @@ use crate::{
 pub struct CompilationEngine<'a> {
     tokenizer: &'a mut Tokenizer,
     xml_writer: &'a mut XmlWriter,
+    class_symtab: SymbolTable,
+    func_symtab: SymbolTable,
 }
 
 impl<'a> CompilationEngine<'a> {
@@ -19,6 +22,8 @@ impl<'a> CompilationEngine<'a> {
         Ok(CompilationEngine {
             tokenizer,
             xml_writer,
+            class_symtab: SymbolTable::build(),
+            func_symtab: SymbolTable::build(),
         })
     }
 
@@ -49,7 +54,13 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        self._compile_identifier("ERROR: expected a class identifier name after keyword 'class'.");
+        self._compile_identifier(
+            "Expected a class identifier name after keyword class.",
+            "",
+            &KindType::ARG,
+            false,
+            false,
+        );
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "{" {
@@ -87,6 +98,11 @@ impl<'a> CompilationEngine<'a> {
 
         // static or field
         self.write_token();
+        let kind_type = match self.tokenizer.token.as_str() {
+            "static" => KindType::STATIC,
+            "field" => KindType::FIELD,
+            _ => panic!("Should not happen!"),
+        };
 
         // keyword: variable type
         self.tokenizer.advance();
@@ -100,7 +116,13 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        self._compile_identifier("ERROR: expected a variable identifier name after variable type.");
+        self._compile_identifier(
+            "Expected a variable identifier name after variable type.",
+            self.tokenizer.token.clone().as_str(),
+            &kind_type,
+            true,
+            true,
+        );
 
         loop {
             self.tokenizer.advance();
@@ -121,7 +143,11 @@ impl<'a> CompilationEngine<'a> {
 
             // varName
             self._compile_identifier(
-                "ERROR: expected a variable identifier name after ',' comma symbol.",
+                "Expected a variable identifier name after ',' comma symbol.",
+                self.tokenizer.token.clone().as_str(),
+                &kind_type,
+                true,
+                true,
             );
         }
 
@@ -154,7 +180,13 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         // subroutineName
-        self._compile_identifier("Expected a subroutine identifier name.");
+        self._compile_identifier(
+            "Expected a subroutine identifier name.",
+            "",
+            &KindType::ARG,
+            false,
+            false,
+        );
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
@@ -188,7 +220,13 @@ impl<'a> CompilationEngine<'a> {
             }
             self.write_token();
 
-            self._compile_identifier("Expected a parameter name identifier.");
+            self._compile_identifier(
+                "Expected a parameter name identifier.",
+                self.tokenizer.token.clone().as_str(),
+                &KindType::ARG,
+                true,
+                true,
+            );
 
             self.tokenizer.advance();
             if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "," {
@@ -245,11 +283,11 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         self._compile_identifier(
-            format!(
-                "ERROR: expected a variable name identifier, but received {}.",
-                self.tokenizer.token
-            )
-            .as_str(),
+            "Expected a variable name identifier.",
+            self.tokenizer.token.clone().as_str(),
+            &KindType::VAR,
+            true,
+            true,
         );
 
         loop {
@@ -265,11 +303,11 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
 
             self._compile_identifier(
-                format!(
-                    "ERROR: expected a variable name identifier, but received {}.",
-                    self.tokenizer.token
-                )
-                .as_str(),
+                "Expected a variable name identifier.",
+                self.tokenizer.token.clone().as_str(),
+                &KindType::VAR,
+                true,
+                true,
             );
         }
         self.xml_writer.write_full_tag("</varDec>");
@@ -318,7 +356,24 @@ impl<'a> CompilationEngine<'a> {
         self.xml_writer.write_full_tag("<letStatement>");
         self.write_token();
 
-        self._compile_identifier("Expected an existing variable name.");
+        self.tokenizer.advance();
+        let mut typ = self.func_symtab.type_of(self.tokenizer.token.as_str());
+        if typ.is_none() {
+            typ = self.class_symtab.type_of(self.tokenizer.token.as_str());
+        }
+
+        if typ.is_some() {
+            let kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+            self._compile_identifier(
+                "Expected an existing variable name.",
+                String::from(typ.unwrap()).as_str(),
+                &kind_type,
+                true,
+                false,
+            );
+        } else {
+            panic!("Should not happen. Symbol {} must exist!", self.tokenizer.token);
+        }
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol {
@@ -458,14 +513,26 @@ impl<'a> CompilationEngine<'a> {
         self.xml_writer.write_full_tag("<doStatement>");
         self.write_token();
 
-        self._compile_identifier("Expected a subroutine name identifier.");
+        self._compile_identifier(
+            "Expected a subroutine name identifier.",
+            "",
+            &KindType::ARG,
+            false,
+            false,
+        );
 
         self.tokenizer.advance();
 
         if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
             self.write_token();
 
-            self._compile_identifier("Expected a subroutine name identifier after dot '.' symbol.");
+            self._compile_identifier(
+                "Expected a subroutine name identifier after dot '.' symbol.",
+                "",
+                &KindType::ARG,
+                false,
+                false,
+            );
 
             self.tokenizer.advance();
         }
@@ -577,7 +644,23 @@ impl<'a> CompilationEngine<'a> {
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::Identifier {
-            self.write_token();
+            let mut typ = self.func_symtab.type_of(self.tokenizer.token.as_str());
+            if typ.is_none() {
+                typ = self.class_symtab.type_of(self.tokenizer.token.as_str());
+            }
+
+            if typ.is_some() {
+                let kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+                self._compile_identifier(
+                    "Expected an existing variable name.",
+                    String::from(typ.unwrap()).as_str(),
+                    &kind_type,
+                    true,
+                    false,
+                );
+            } else {
+                self.write_token();
+            }
         } else {
             self.print_compile_error("Expected an identifier.");
         }
@@ -612,7 +695,13 @@ impl<'a> CompilationEngine<'a> {
         } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
             self.write_token();
 
-            self._compile_identifier("Expected a subroutine name identifier after dot '.' symbol.");
+            self._compile_identifier(
+                "Expected a subroutine name identifier after dot '.' symbol.",
+                "",
+                &KindType::ARG,
+                false,
+                false,
+            );
 
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
@@ -653,16 +742,68 @@ impl<'a> CompilationEngine<'a> {
         self.xml_writer.write_full_tag("</expressionList>");
     }
 
-    fn _compile_identifier(&mut self, message: &str) {
-        self.tokenizer.advance();
+    fn _compile_identifier(
+        &mut self,
+        message: &str,
+        typ: &str,
+        kind_type: &KindType,
+        complex_identifier: bool,
+        declare: bool,
+    ) {
+        if !(complex_identifier && !declare) {
+            self.tokenizer.advance();
+        }
+
         if self.tokenizer.token_type() != TokenType::Identifier {
             self.print_compile_error(format!("{}", message).as_str());
         }
-        self.write_token();
+
+        if declare {
+            match *kind_type {
+                KindType::VAR | KindType::ARG => {
+                    self.func_symtab
+                        .define(self.tokenizer.token.as_str(), typ, kind_type.clone());
+                }
+                KindType::FIELD | KindType::STATIC => {
+                    self.class_symtab
+                        .define(self.tokenizer.token.as_str(), typ, kind_type.clone());
+                }
+            };
+        }
+
+        if complex_identifier {
+            let index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+
+            self.xml_writer.write_full_tag("<identifier>");
+            self.xml_writer.write_full_tag("<name>");
+            self.xml_writer
+                .write_full_tag(format!("{}", self.tokenizer.token).as_str());
+            self.xml_writer.write_full_tag("</name>");
+            self.xml_writer.write_full_tag("<typ>");
+            self.xml_writer.write_full_tag(format!("{}", typ).as_str());
+            self.xml_writer.write_full_tag("</typ>");
+            self.xml_writer.write_full_tag("<kind>");
+            self.xml_writer
+                .write_full_tag(format!("{}", kind_type).as_str());
+            self.xml_writer.write_full_tag("</kind>");
+            self.xml_writer.write_full_tag("<index>");
+            self.xml_writer
+                .write_full_tag(format!("{}", index).as_str());
+            self.xml_writer.write_full_tag("</index>");
+            self.xml_writer.write_full_tag("</identifier>");
+        } else {
+            self.write_token();
+        }
     }
 
     fn _compile_subroutine_call(&mut self) {
-        self._compile_identifier("ERROR: expected a identifier.");
+        self._compile_identifier(
+            "ERROR: expected a identifier.",
+            "",
+            &KindType::ARG,
+            false,
+            false,
+        );
     }
 
     fn write_token(&mut self) {
