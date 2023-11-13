@@ -73,7 +73,7 @@ var
 sum
 </name>
 <typ>
-,
+int
 </typ>
 <kind>
 var
@@ -295,7 +295,7 @@ var
 sum
 </name>
 <typ>
-,
+int
 </typ>
 <kind>
 var
@@ -312,7 +312,7 @@ var
 sum
 </name>
 <typ>
-,
+int
 </typ>
 <kind>
 var
@@ -436,7 +436,7 @@ var
 sum
 </name>
 <typ>
-,
+int
 </typ>
 <kind>
 var

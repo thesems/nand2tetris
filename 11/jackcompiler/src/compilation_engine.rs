@@ -282,9 +282,10 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
+        let typ = self.tokenizer.token.clone();
         self._compile_identifier(
             "Expected a variable name identifier.",
-            self.tokenizer.token.clone().as_str(),
+            typ.as_str(),
             &KindType::VAR,
             true,
             true,
@@ -304,7 +305,7 @@ impl<'a> CompilationEngine<'a> {
 
             self._compile_identifier(
                 "Expected a variable name identifier.",
-                self.tokenizer.token.clone().as_str(),
+                typ.as_str(), 
                 &KindType::VAR,
                 true,
                 true,
