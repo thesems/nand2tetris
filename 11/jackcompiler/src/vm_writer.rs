@@ -1,7 +1,7 @@
-use std::{fs, error::Error};
 use std::io::Write;
+use std::{error::Error, fs};
 
-enum Segment {
+pub enum Segment {
     CONSTANT,
     ARGUMENT,
     LOCAL,
@@ -12,7 +12,7 @@ enum Segment {
     TEMP,
 }
 
-enum Operation {
+pub enum Operation {
     ADD,
     SUB,
     NEG,
@@ -22,15 +22,22 @@ enum Operation {
     AND,
     OR,
     NOT,
+    // Special
+    MULT,
+    DIV,
 }
 
-struct VmWriter {
-    file: fs::File
+pub struct VmWriter {
+    file: fs::File,
 }
 
 impl VmWriter {
     pub fn build(out_path: &str) -> Result<VmWriter, Box<dyn Error>> {
-        let file = std::fs::File::options().create(true).append(false).write(true).open(out_path)?;
+        let file = std::fs::File::options()
+            .create(true)
+            .append(false)
+            .write(true)
+            .open(out_path)?;
         Ok(VmWriter { file })
     }
 
@@ -59,6 +66,7 @@ impl VmWriter {
             Segment::POINTER => "pointer",
             Segment::TEMP => "temp",
         };
+
         write!(self.file, "pop {} {}\n", segment_str, index).unwrap();
     }
 
@@ -73,8 +81,19 @@ impl VmWriter {
             Operation::AND => "and",
             Operation::OR => "or",
             Operation::NOT => "not",
+            Operation::MULT => {
+                self.write_call("Math.multiply", 2);
+                ""
+            }
+            Operation::DIV => {
+                self.write_call("Math.divide", 2);
+                ""
+            }
         };
-        write!(self.file, "{}\n", op_str).unwrap();
+
+        if op_str != "" {
+            write!(self.file, "{}\n", op_str).unwrap();
+        }
     }
 
     pub fn write_label(&mut self, label: &str) {
@@ -88,7 +107,7 @@ impl VmWriter {
     pub fn write_if(&mut self, label: &str) {
         write!(self.file, "if-goto {}\n", label).unwrap();
     }
-    
+
     pub fn write_call(&mut self, name: &str, nargs: u16) {
         write!(self.file, "call {} {}\n", name, nargs).unwrap();
     }

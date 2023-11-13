@@ -4,26 +4,38 @@ use crate::{
     symbol_table::{KindType, SymbolTable},
     tokenizer::{KeywordType, TokenType, Tokenizer},
     xml_writer::XmlWriter,
+    vm_writer::{VmWriter, Operation, Segment},
 };
 
 pub struct CompilationEngine<'a> {
     tokenizer: &'a mut Tokenizer,
     xml_writer: &'a mut XmlWriter,
+    vm_writer: &'a mut VmWriter,
     class_symtab: SymbolTable,
     func_symtab: SymbolTable,
+    if_counter: u16,
+    while_counter: u16,
+    current_class: String,
+    current_func: String,
 }
 
 impl<'a> CompilationEngine<'a> {
     pub fn build(
         tokenizer: &'a mut Tokenizer,
         xml_writer: &'a mut XmlWriter,
+        vm_writer: &'a mut VmWriter,
     ) -> Result<CompilationEngine<'a>, Box<dyn Error>> {
         tokenizer.reset();
         Ok(CompilationEngine {
             tokenizer,
             xml_writer,
+            vm_writer,
             class_symtab: SymbolTable::build(),
             func_symtab: SymbolTable::build(),
+            if_counter: 0,
+            while_counter: 0,
+            current_class: String::from(""),
+            current_func: String::from(""),
         })
     }
 
@@ -61,6 +73,8 @@ impl<'a> CompilationEngine<'a> {
             false,
             false,
         );
+
+        self.current_class = self.tokenizer.token.clone();
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "{" {
@@ -187,6 +201,7 @@ impl<'a> CompilationEngine<'a> {
             false,
             false,
         );
+        self.current_func = self.tokenizer.token.clone();
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
@@ -209,6 +224,7 @@ impl<'a> CompilationEngine<'a> {
     pub fn compile_parameter_list(&mut self) {
         self.xml_writer.write_full_tag("<parameterList>");
 
+        let mut param_count = 0;
         self.tokenizer.advance();
         while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")") {
             let allowed_keywords = vec!["void", "int", "char", "boolean"];
@@ -218,6 +234,8 @@ impl<'a> CompilationEngine<'a> {
             {
                 self.print_compile_error("Expected a variable type.");
             }
+            
+            param_count = param_count + 1;
             self.write_token();
 
             self._compile_identifier(
@@ -234,6 +252,12 @@ impl<'a> CompilationEngine<'a> {
                 self.tokenizer.advance();
             }
         }
+
+        // VM-Code Generator
+        let mut full_func_name = self.current_class.clone();
+        full_func_name.push('.');
+        full_func_name.push_str(self.current_func.as_str());
+        self.vm_writer.write_function(full_func_name.as_str(), param_count);
 
         self.xml_writer.write_full_tag("</parameterList>");
     }
@@ -427,13 +451,19 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         self.tokenizer.advance();
-
         self.compile_expression();
 
         if self.tokenizer.token != ")" || self.tokenizer.token_type() != TokenType::Symbol {
-            self.print_compile_error("Expected closing bracket after keyword f!");
+            self.print_compile_error("Expected closing bracket after keyword if!");
         }
         self.write_token();
+
+        // VM-Code Generation
+        let l1_label = format!("L1-{}", self.if_counter);
+        let l2_label = format!("L1-{}", self.if_counter + 1);
+
+        self.vm_writer.write_arithmetic(Operation::NOT);
+        self.vm_writer.write_if(l1_label.as_str()); 
 
         self.tokenizer.advance();
         if self.tokenizer.token != "{" || self.tokenizer.token_type() != TokenType::Symbol {
@@ -443,6 +473,10 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         self.compile_statements();
+
+        // VM-Code Generation
+        self.vm_writer.write_goto(l2_label.as_str()); 
+        self.vm_writer.write_label(l1_label.as_str()); 
 
         if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("Expected an closing curvy bracket after keyword if.");
@@ -471,6 +505,10 @@ impl<'a> CompilationEngine<'a> {
             self.tokenizer.advance();
         }
 
+        // VM-Code Generation
+        self.vm_writer.write_label(l2_label.as_str()); 
+        self.if_counter = self.if_counter + 2;
+
         self.xml_writer.write_full_tag("</ifStatement>");
     }
 
@@ -484,9 +522,17 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        self.tokenizer.advance();
+        // VM-Code Generation
+        let l1 = format!("WHILE-{}", self.while_counter);
+        let l2 = format!("WHILE-{}", self.while_counter + 1);
+        self.vm_writer.write_label(l1.as_str());
 
+        self.tokenizer.advance();
         self.compile_expression();
+
+        // VM-Code Generation
+        self.vm_writer.write_arithmetic(Operation::NOT);
+        self.vm_writer.write_if(l2.as_str());
 
         if self.tokenizer.token != ")" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("Expected closing bracket after keyword while!");
@@ -502,10 +548,17 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
         self.compile_statements();
 
+        // VM-Code Generation
+        self.vm_writer.write_goto(l1.as_str());
+
         if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("Expected an closing curvy bracket after keyword while.");
         }
         self.write_token();
+
+        // VM-Code Generation
+        self.vm_writer.write_label(l2.as_str());
+        self.while_counter = self.while_counter + 1;
 
         self.xml_writer.write_full_tag("</whileStatement>");
     }
@@ -522,6 +575,7 @@ impl<'a> CompilationEngine<'a> {
             false,
         );
 
+        let mut func_name = self.tokenizer.token.clone();
         self.tokenizer.advance();
 
         if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
@@ -535,6 +589,8 @@ impl<'a> CompilationEngine<'a> {
                 false,
             );
 
+            func_name.push('.');
+            func_name.push_str(self.tokenizer.token.as_str());
             self.tokenizer.advance();
         }
 
@@ -544,7 +600,12 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
         self.tokenizer.advance();
 
-        self.compile_expression_list();
+        let n = self.compile_expression_list();
+        
+        // TODO: rewrite whole function to be handled in compile_expression?
+        // VM-Code Generator
+        self.vm_writer.write_call(func_name.as_str(), n);
+        self.vm_writer.write_pop(Segment::TEMP, 0);
 
         if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
             self.print_compile_error("Expected a closing bracket after expression list.");
@@ -562,8 +623,9 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_return(&mut self) {
         self.xml_writer.write_full_tag("<returnStatement>");
-
         self.write_token();
+
+        let mut has_return_value = false;
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol {
@@ -572,12 +634,20 @@ impl<'a> CompilationEngine<'a> {
             if self.tokenizer.token_type() != TokenType::Symbol {
                 self.print_compile_error("Expected a semi-colon.");
             }
+
+            has_return_value = true;
         }
 
         if self.tokenizer.token != ";" {
             self.print_compile_error("Expected a symbol ';' but received: {}.");
         }
         self.write_token();
+
+        // VM-Code Generator
+        if !has_return_value {
+            self.vm_writer.write_push(Segment::CONSTANT, 0);
+        }
+        self.vm_writer.write_return();
 
         self.xml_writer.write_full_tag("</returnStatement>");
     }
@@ -590,10 +660,26 @@ impl<'a> CompilationEngine<'a> {
         if self.tokenizer.token_type() == TokenType::Symbol
             && symbols.contains(&&self.tokenizer.token.as_str())
         {
+            let symbol = self.tokenizer.token.clone();
             self.write_token();
 
             self.tokenizer.advance();
             self.compile_term();
+
+            // VM-Code Generator
+            let op = match symbol.as_str() {
+                "+" => Operation::ADD,
+                "-" => Operation::SUB,
+                "&" => Operation::AND,
+                "|" => Operation::OR,
+                "=" => Operation::EQ,
+                ">" => Operation::GT,
+                "<" => Operation::LT,
+                "*" => Operation::MULT,
+                "/" => Operation::DIV,
+                _ => panic!("Should not never reach!")
+            };
+            self.vm_writer.write_arithmetic(op);
         }
 
         self.xml_writer.write_full_tag("</expression>");
@@ -612,25 +698,50 @@ impl<'a> CompilationEngine<'a> {
 
         if self.tokenizer.token_type() == TokenType::IntConst {
             self.write_token();
+            // VM-Code Generator
+            self.vm_writer.write_push(Segment::CONSTANT, self.tokenizer.int_token);
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::Keyword {
             if !keyword_constants.contains(&&self.tokenizer.token.as_str()) {
                 self.print_compile_error("Non-allowed keyword.");
             }
+            // VM-Code Generator
+            match self.tokenizer.keyword() {
+                KeywordType::True => {
+                    self.vm_writer.write_push(Segment::CONSTANT, 1);
+                    self.vm_writer.write_arithmetic(Operation::NOT);
+                },
+                KeywordType::False => {
+                    self.vm_writer.write_push(Segment::CONSTANT, 0);
+                },
+                _ => panic!("Should not reach this ever!")
+                // TODO: handle null and this?
+            };
+
             self.write_token();
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::StringConst {
+            // TODO: push string to the stack
             self.write_token();
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::Symbol
             && unary_op.contains(&&self.tokenizer.token.as_str())
         {
+            let op = match self.tokenizer.token.as_str() {
+                "~" => Operation::NOT,
+                "-" => Operation::NEG,
+                _ => panic!("Should not happen ever!")
+            };
             self.write_token();
             self.tokenizer.advance();
             self.compile_term();
+
+            // VM-Code Generator
+            self.vm_writer.write_arithmetic(op);
+
             self.xml_writer.write_full_tag("</term>");
             return;
         } else if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "(" {
@@ -726,11 +837,13 @@ impl<'a> CompilationEngine<'a> {
         self.xml_writer.write_full_tag("</term>");
     }
 
-    pub fn compile_expression_list(&mut self) {
+    pub fn compile_expression_list(&mut self) -> u16 {
         self.xml_writer.write_full_tag("<expressionList>");
 
+        let mut n = 0;
         while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")") {
             self.compile_expression();
+            n = n + 1;
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "," {
                 break;
@@ -741,6 +854,7 @@ impl<'a> CompilationEngine<'a> {
         }
 
         self.xml_writer.write_full_tag("</expressionList>");
+        return n;
     }
 
     fn _compile_identifier(

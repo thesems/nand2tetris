@@ -4,6 +4,7 @@ use std::fs;
 use crate::compilation_engine::CompilationEngine;
 use crate::config::Config;
 use crate::tokenizer::Tokenizer;
+use crate::vm_writer::VmWriter;
 use crate::xml_writer::XmlWriter;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
@@ -32,6 +33,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
         let out_xml_tok = in_file.replace(".jack", "T-gen.xml");
         let out_xml_cg = in_file.replace(".jack", "-gen.xml");
+        let out_vm = in_file.replace(".jack", ".vm");
 
         let input = fs::read_to_string(in_file.as_str())?;
         let mut tokenizer = Tokenizer::build(input.as_str())?;
@@ -49,7 +51,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         xml_writer.write_full_tag("</tokens>");
 
         xml_writer = XmlWriter::build(out_xml_cg.as_str())?;
-        let mut comp_engine = CompilationEngine::build(&mut tokenizer, &mut xml_writer)?;
+        let mut vm_writer = VmWriter::build(out_vm.as_str())?;
+        let mut comp_engine = CompilationEngine::build(&mut tokenizer, &mut xml_writer, &mut vm_writer)?;
         comp_engine.compile_class();
     }
 
