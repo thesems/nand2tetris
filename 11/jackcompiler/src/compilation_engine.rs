@@ -387,8 +387,13 @@ impl<'a> CompilationEngine<'a> {
             typ = self.class_symtab.type_of(self.tokenizer.token.as_str());
         }
 
+        let kind_type: KindType;
+        let index: u16;
+
         if typ.is_some() {
-            let kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+            kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+            index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+
             self._compile_identifier(
                 "Expected an existing variable name.",
                 String::from(typ.unwrap()).as_str(),
@@ -423,6 +428,8 @@ impl<'a> CompilationEngine<'a> {
                 self.print_compile_error("Expected an equal '=' symbol after variable name.");
             }
             self.write_token();
+
+            // TODO: handle let arrays indexing compilation
         } else if self.tokenizer.token == "=" {
             self.write_token();
         } else {
@@ -431,6 +438,15 @@ impl<'a> CompilationEngine<'a> {
 
         self.tokenizer.advance();
         self.compile_expression();
+
+        // VM-Code Generation
+        let segment = match kind_type {
+            KindType::VAR => Segment::LOCAL,
+            KindType::ARG => Segment::ARGUMENT,
+            KindType::FIELD => Segment::THIS,
+            KindType::STATIC => Segment::STATIC,
+        };
+        self.vm_writer.write_pop(segment, index);
 
         if self.tokenizer.token != ";" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("ERROR: expected a semi-colon ';' symbol, but received: {}");
@@ -690,6 +706,7 @@ impl<'a> CompilationEngine<'a> {
 
         let keyword_constants = vec!["true", "false", "null", "this"];
         let unary_op = vec!["-", "~"];
+        let mut func_name = String::from(""); // in case it is a function call
 
         let safe_exit = |s: &mut CompilationEngine| {
             s.xml_writer.write_full_tag("</term>");
@@ -723,7 +740,7 @@ impl<'a> CompilationEngine<'a> {
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::StringConst {
-            // TODO: push string to the stack
+            // TODO: push string in form of a integer-list to the stack?
             self.write_token();
             safe_exit(self);
             return;
@@ -770,8 +787,20 @@ impl<'a> CompilationEngine<'a> {
                     true,
                     false,
                 );
+
+                // VM-Code Generator
+                let segment = match kind_type {
+                    KindType::VAR => Segment::LOCAL,
+                    KindType::ARG => Segment::ARGUMENT,
+                    KindType::FIELD => Segment::THIS,
+                    KindType::STATIC => Segment::STATIC,
+                };
+                let index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+                self.vm_writer.write_push(segment, index);
             } else {
+                // function/method/constructor
                 self.write_token();
+                func_name = self.tokenizer.token.clone();
             }
         } else {
             self.print_compile_error("Expected an identifier.");
@@ -815,6 +844,9 @@ impl<'a> CompilationEngine<'a> {
                 false,
             );
 
+            func_name.push('.');
+            func_name.push_str(self.tokenizer.token.as_str());
+
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "(" {
                 self.print_compile_error("Expected an opening bracket after expression list.");
@@ -822,7 +854,10 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
 
             self.tokenizer.advance();
-            self.compile_expression_list();
+            let n = self.compile_expression_list();
+
+            // VM-Code Generation
+            self.vm_writer.write_call(func_name.as_str(), n);
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
                 self.print_compile_error("Expected a closing bracket after expression list.");
