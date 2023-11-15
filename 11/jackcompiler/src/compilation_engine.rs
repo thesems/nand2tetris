@@ -39,6 +39,15 @@ impl<'a> CompilationEngine<'a> {
         })
     }
 
+    fn kind_to_segment(kind_type: &KindType) -> Segment {
+        return match kind_type {
+            KindType::VAR => Segment::LOCAL,
+            KindType::ARG => Segment::ARGUMENT,
+            KindType::FIELD => Segment::THIS,
+            KindType::STATIC => Segment::STATIC,
+        };
+    }
+
     fn print_compile_error(&self, message: &str) {
         let token = match self.tokenizer.token_type() {
             TokenType::IntConst => self.tokenizer.int_token.to_string(),
@@ -382,28 +391,25 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         self.tokenizer.advance();
-        let mut typ = self.func_symtab.type_of(self.tokenizer.token.as_str());
-        if typ.is_none() {
-            typ = self.class_symtab.type_of(self.tokenizer.token.as_str());
-        }
 
-        let kind_type: KindType;
-        let index: u16;
+        let mut is_array = false;
+        let typ = self.class_symtab.type_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
+            return self.func_symtab.type_of(self.tokenizer.token.as_str()).unwrap();
+        });
+        let index = self.class_symtab.index_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
+            return self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+        });
+        let kind_type = self.class_symtab.kind_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
+            return self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+        });
 
-        if typ.is_some() {
-            kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
-            index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
-
-            self._compile_identifier(
-                "Expected an existing variable name.",
-                String::from(typ.unwrap()).as_str(),
-                &kind_type,
-                true,
-                false,
-            );
-        } else {
-            panic!("Should not happen. Symbol {} must exist!", self.tokenizer.token);
-        }
+        self._compile_identifier(
+            "Expected an existing variable name.",
+            String::from(typ).as_str(),
+            &kind_type,
+            true,
+            false,
+        );
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Symbol {
@@ -415,6 +421,13 @@ impl<'a> CompilationEngine<'a> {
 
             self.tokenizer.advance();
             self.compile_expression();
+    
+            // VM-Code Generator
+            let segment = CompilationEngine::kind_to_segment(&kind_type);
+            self.vm_writer.write_push(segment, index);
+            self.vm_writer.write_arithmetic(Operation::ADD);
+            self.vm_writer.write_pop(Segment::THAT, 1);
+            is_array = true;
 
             if self.tokenizer.token != "]" || self.tokenizer.token_type() != TokenType::Symbol {
                 self.print_compile_error(
@@ -439,14 +452,13 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
         self.compile_expression();
 
-        // VM-Code Generation
-        let segment = match kind_type {
-            KindType::VAR => Segment::LOCAL,
-            KindType::ARG => Segment::ARGUMENT,
-            KindType::FIELD => Segment::THIS,
-            KindType::STATIC => Segment::STATIC,
-        };
-        self.vm_writer.write_pop(segment, index);
+        if is_array {
+            self.vm_writer.write_pop(Segment::THAT, 0);
+        } else {
+            // VM-Code Generation
+            let segment = CompilationEngine::kind_to_segment(&kind_type);
+            self.vm_writer.write_pop(segment, index);
+        }
 
         if self.tokenizer.token != ";" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("ERROR: expected a semi-colon ';' symbol, but received: {}");
@@ -789,12 +801,7 @@ impl<'a> CompilationEngine<'a> {
                 );
 
                 // VM-Code Generator
-                let segment = match kind_type {
-                    KindType::VAR => Segment::LOCAL,
-                    KindType::ARG => Segment::ARGUMENT,
-                    KindType::FIELD => Segment::THIS,
-                    KindType::STATIC => Segment::STATIC,
-                };
+                let segment = Self::kind_to_segment(&kind_type);
                 let index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
                 self.vm_writer.write_push(segment, index);
             } else {
@@ -812,6 +819,11 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
             self.tokenizer.advance();
             self.compile_expression();
+
+            // VM-Code Generator
+            self.vm_writer.write_arithmetic(Operation::ADD);
+            self.vm_writer.write_pop(Segment::POINTER, 1);
+            self.vm_writer.write_push(Segment::THAT, 0);
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != "]" {
                 self.print_compile_error(
