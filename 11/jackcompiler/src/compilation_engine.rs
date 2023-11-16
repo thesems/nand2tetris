@@ -3,8 +3,8 @@ use std::error::Error;
 use crate::{
     symbol_table::{KindType, SymbolTable},
     tokenizer::{KeywordType, TokenType, Tokenizer},
+    vm_writer::{Operation, Segment, VmWriter},
     xml_writer::XmlWriter,
-    vm_writer::{VmWriter, Operation, Segment},
 };
 
 pub struct CompilationEngine<'a> {
@@ -233,7 +233,6 @@ impl<'a> CompilationEngine<'a> {
     pub fn compile_parameter_list(&mut self) {
         self.xml_writer.write_full_tag("<parameterList>");
 
-        let mut param_count = 0;
         self.tokenizer.advance();
         while !(self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == ")") {
             let allowed_keywords = vec!["void", "int", "char", "boolean"];
@@ -243,8 +242,6 @@ impl<'a> CompilationEngine<'a> {
             {
                 self.print_compile_error("Expected a variable type.");
             }
-            
-            param_count = param_count + 1;
             self.write_token();
 
             self._compile_identifier(
@@ -262,12 +259,6 @@ impl<'a> CompilationEngine<'a> {
             }
         }
 
-        // VM-Code Generator
-        let mut full_func_name = self.current_class.clone();
-        full_func_name.push('.');
-        full_func_name.push_str(self.current_func.as_str());
-        self.vm_writer.write_function(full_func_name.as_str(), param_count);
-
         self.xml_writer.write_full_tag("</parameterList>");
     }
 
@@ -281,13 +272,22 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
+        let mut local_count = 0;
         loop {
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "var" {
                 break;
             }
             self.compile_var_dec();
+            local_count = local_count + 1;
         }
+
+        // VM-Code Generator
+        let mut full_func_name = self.current_class.clone();
+        full_func_name.push('.');
+        full_func_name.push_str(self.current_func.as_str());
+        self.vm_writer
+            .write_function(full_func_name.as_str(), local_count);
 
         self.compile_statements();
 
@@ -338,7 +338,7 @@ impl<'a> CompilationEngine<'a> {
 
             self._compile_identifier(
                 "Expected a variable name identifier.",
-                typ.as_str(), 
+                typ.as_str(),
                 &KindType::VAR,
                 true,
                 true,
@@ -393,15 +393,33 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
 
         let mut is_array = false;
-        let typ = self.class_symtab.type_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
-            return self.func_symtab.type_of(self.tokenizer.token.as_str()).unwrap();
-        });
-        let index = self.class_symtab.index_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
-            return self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
-        });
-        let kind_type = self.class_symtab.kind_of(self.tokenizer.token.as_str()).unwrap_or_else(|| {
-            return self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
-        });
+        let typ = self
+            .class_symtab
+            .type_of(self.tokenizer.token.as_str())
+            .unwrap_or_else(|| {
+                return self
+                    .func_symtab
+                    .type_of(self.tokenizer.token.as_str())
+                    .unwrap();
+            });
+        let index = self
+            .class_symtab
+            .index_of(self.tokenizer.token.as_str())
+            .unwrap_or_else(|| {
+                return self
+                    .func_symtab
+                    .index_of(self.tokenizer.token.as_str())
+                    .unwrap();
+            });
+        let kind_type = self
+            .class_symtab
+            .kind_of(self.tokenizer.token.as_str())
+            .unwrap_or_else(|| {
+                return self
+                    .func_symtab
+                    .kind_of(self.tokenizer.token.as_str())
+                    .unwrap();
+            });
 
         self._compile_identifier(
             "Expected an existing variable name.",
@@ -421,7 +439,7 @@ impl<'a> CompilationEngine<'a> {
 
             self.tokenizer.advance();
             self.compile_expression();
-    
+
             // VM-Code Generator
             let segment = CompilationEngine::kind_to_segment(&kind_type);
             self.vm_writer.write_push(segment, index);
@@ -491,7 +509,7 @@ impl<'a> CompilationEngine<'a> {
         let l2_label = format!("L1-{}", self.if_counter + 1);
 
         self.vm_writer.write_arithmetic(Operation::NOT);
-        self.vm_writer.write_if(l1_label.as_str()); 
+        self.vm_writer.write_if(l1_label.as_str());
 
         self.tokenizer.advance();
         if self.tokenizer.token != "{" || self.tokenizer.token_type() != TokenType::Symbol {
@@ -503,8 +521,8 @@ impl<'a> CompilationEngine<'a> {
         self.compile_statements();
 
         // VM-Code Generation
-        self.vm_writer.write_goto(l2_label.as_str()); 
-        self.vm_writer.write_label(l1_label.as_str()); 
+        self.vm_writer.write_goto(l2_label.as_str());
+        self.vm_writer.write_label(l1_label.as_str());
 
         if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("Expected an closing curvy bracket after keyword if.");
@@ -534,7 +552,7 @@ impl<'a> CompilationEngine<'a> {
         }
 
         // VM-Code Generation
-        self.vm_writer.write_label(l2_label.as_str()); 
+        self.vm_writer.write_label(l2_label.as_str());
         self.if_counter = self.if_counter + 2;
 
         self.xml_writer.write_full_tag("</ifStatement>");
@@ -629,7 +647,7 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
 
         let n = self.compile_expression_list();
-        
+
         // TODO: rewrite whole function to be handled in compile_expression?
         // VM-Code Generator
         self.vm_writer.write_call(func_name.as_str(), n);
@@ -705,7 +723,7 @@ impl<'a> CompilationEngine<'a> {
                 "<" => Operation::LT,
                 "*" => Operation::MULT,
                 "/" => Operation::DIV,
-                _ => panic!("Should not never reach!")
+                _ => panic!("Should not never reach!"),
             };
             self.vm_writer.write_arithmetic(op);
         }
@@ -728,7 +746,8 @@ impl<'a> CompilationEngine<'a> {
         if self.tokenizer.token_type() == TokenType::IntConst {
             self.write_token();
             // VM-Code Generator
-            self.vm_writer.write_push(Segment::CONSTANT, self.tokenizer.int_token);
+            self.vm_writer
+                .write_push(Segment::CONSTANT, self.tokenizer.int_token);
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::Keyword {
@@ -740,19 +759,31 @@ impl<'a> CompilationEngine<'a> {
                 KeywordType::True => {
                     self.vm_writer.write_push(Segment::CONSTANT, 1);
                     self.vm_writer.write_arithmetic(Operation::NOT);
-                },
+                }
                 KeywordType::False => {
                     self.vm_writer.write_push(Segment::CONSTANT, 0);
-                },
-                _ => panic!("Should not reach this ever!")
-                // TODO: handle null and this?
+                }
+                _ => panic!("Should not reach this ever!"), // TODO: handle null and this?
             };
 
             self.write_token();
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::StringConst {
-            // TODO: push string in form of a integer-list to the stack?
+            // VM-Code Generation
+            let size = self.tokenizer.token.len() as u16;
+            self.vm_writer.write_push(Segment::CONSTANT, size);
+            self.vm_writer.write_call("String.new", 1);
+            self.vm_writer.write_pop(Segment::TEMP, 5); // TODO: careful not to reuse temp multiple
+
+            for c in self.tokenizer.token.chars() {
+                self.vm_writer.write_push(Segment::TEMP, 5); // TODO: careful not to reuse temp multiple
+                self.vm_writer.write_push(Segment::CONSTANT, c as u16);
+                self.vm_writer.write_call("String.appendChar", 2);
+                self.vm_writer.write_pop(Segment::TEMP, 5);
+            }
+                
+            self.vm_writer.write_push(Segment::TEMP, 5);
             self.write_token();
             safe_exit(self);
             return;
@@ -762,7 +793,7 @@ impl<'a> CompilationEngine<'a> {
             let op = match self.tokenizer.token.as_str() {
                 "~" => Operation::NOT,
                 "-" => Operation::NEG,
-                _ => panic!("Should not happen ever!")
+                _ => panic!("Should not happen ever!"),
             };
             self.write_token();
             self.tokenizer.advance();
@@ -791,7 +822,10 @@ impl<'a> CompilationEngine<'a> {
             }
 
             if typ.is_some() {
-                let kind_type = self.func_symtab.kind_of(self.tokenizer.token.as_str()).unwrap();
+                let kind_type = self
+                    .func_symtab
+                    .kind_of(self.tokenizer.token.as_str())
+                    .unwrap();
                 self._compile_identifier(
                     "Expected an existing variable name.",
                     String::from(typ.unwrap()).as_str(),
@@ -802,7 +836,10 @@ impl<'a> CompilationEngine<'a> {
 
                 // VM-Code Generator
                 let segment = Self::kind_to_segment(&kind_type);
-                let index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+                let index = self
+                    .func_symtab
+                    .index_of(self.tokenizer.token.as_str())
+                    .unwrap();
                 self.vm_writer.write_push(segment, index);
             } else {
                 // function/method/constructor
@@ -934,7 +971,10 @@ impl<'a> CompilationEngine<'a> {
         }
 
         if complex_identifier {
-            let index = self.func_symtab.index_of(self.tokenizer.token.as_str()).unwrap();
+            let index = self
+                .func_symtab
+                .index_of(self.tokenizer.token.as_str())
+                .unwrap();
 
             self.xml_writer.write_full_tag("<identifier>");
             self.xml_writer.write_full_tag("<name>");
