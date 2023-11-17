@@ -68,6 +68,9 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_class(&mut self) {
         self.xml_writer.write_full_tag("<class>");
+        
+        // Clear class symbol table
+        self.class_symtab.start_subroutine();
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "class" {
@@ -183,6 +186,9 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_subroutine_dec(&mut self) {
         self.xml_writer.write_full_tag("<subroutineDec>");
+        
+        // Clear function symbol table
+        self.func_symtab.start_subroutine();
 
         let allowed_keywords = vec!["constructor", "function", "method"];
         if self.tokenizer.token_type() != TokenType::Keyword
@@ -226,7 +232,6 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         self.compile_subroutine_body();
-
         self.xml_writer.write_full_tag("</subroutineDec>");
     }
 
@@ -272,17 +277,16 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
 
-        let mut local_count = 0;
         loop {
             self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Keyword || self.tokenizer.token != "var" {
                 break;
             }
             self.compile_var_dec();
-            local_count = local_count + 1;
         }
 
         // VM-Code Generator
+        let local_count = self.func_symtab.var_count(&KindType::VAR);
         let mut full_func_name = self.current_class.clone();
         full_func_name.push('.');
         full_func_name.push_str(self.current_func.as_str());
@@ -444,7 +448,6 @@ impl<'a> CompilationEngine<'a> {
             let segment = CompilationEngine::kind_to_segment(&kind_type);
             self.vm_writer.write_push(segment, index);
             self.vm_writer.write_arithmetic(Operation::ADD);
-            self.vm_writer.write_pop(Segment::THAT, 1);
             is_array = true;
 
             if self.tokenizer.token != "]" || self.tokenizer.token_type() != TokenType::Symbol {
@@ -470,10 +473,13 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
         self.compile_expression();
 
+        // VM-Code Generation
         if is_array {
+            self.vm_writer.write_pop(Segment::TEMP, 0);
+            self.vm_writer.write_pop(Segment::POINTER, 1);
+            self.vm_writer.write_push(Segment::TEMP, 0);
             self.vm_writer.write_pop(Segment::THAT, 0);
         } else {
-            // VM-Code Generation
             let segment = CompilationEngine::kind_to_segment(&kind_type);
             self.vm_writer.write_pop(segment, index);
         }
@@ -507,6 +513,7 @@ impl<'a> CompilationEngine<'a> {
         // VM-Code Generation
         let l1_label = format!("L1-{}", self.if_counter);
         let l2_label = format!("L1-{}", self.if_counter + 1);
+        self.if_counter = self.if_counter + 2;
 
         self.vm_writer.write_arithmetic(Operation::NOT);
         self.vm_writer.write_if(l1_label.as_str());
@@ -553,7 +560,6 @@ impl<'a> CompilationEngine<'a> {
 
         // VM-Code Generation
         self.vm_writer.write_label(l2_label.as_str());
-        self.if_counter = self.if_counter + 2;
 
         self.xml_writer.write_full_tag("</ifStatement>");
     }
@@ -571,6 +577,7 @@ impl<'a> CompilationEngine<'a> {
         // VM-Code Generation
         let l1 = format!("WHILE-{}", self.while_counter);
         let l2 = format!("WHILE-{}", self.while_counter + 1);
+        self.while_counter = self.while_counter + 1;
         self.vm_writer.write_label(l1.as_str());
 
         self.tokenizer.advance();
@@ -604,8 +611,6 @@ impl<'a> CompilationEngine<'a> {
 
         // VM-Code Generation
         self.vm_writer.write_label(l2.as_str());
-        self.while_counter = self.while_counter + 1;
-
         self.xml_writer.write_full_tag("</whileStatement>");
     }
 

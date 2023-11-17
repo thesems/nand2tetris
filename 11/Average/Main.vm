@@ -1,4 +1,4 @@
-function Main.main 3
+function Main.main 4
 push constant 18
 call String.new 1
 pop temp 5
@@ -91,7 +91,6 @@ if-goto WHILE-1
 push local 2
 push local 0
 add
-pop that 1
 push constant 16
 call String.new 1
 pop temp 5
@@ -161,6 +160,9 @@ call String.appendChar 2
 pop temp 5
 push temp 5
 call Keyboard.readInt 1
+pop temp 0
+pop pointer 1
+push temp 0
 pop that 0
 push local 3
 push local 0

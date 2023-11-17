@@ -595,7 +595,7 @@ int
 arg
 </kind>
 <index>
-1
+0
 </index>
 </identifier>
 </parameterList>
@@ -619,7 +619,7 @@ int
 arg
 </kind>
 <index>
-1
+0
 </index>
 </identifier>
 </term>
@@ -660,7 +660,7 @@ int
 arg
 </kind>
 <index>
-1
+0
 </index>
 </identifier>
 </term>
@@ -696,7 +696,7 @@ int
 arg
 </kind>
 <index>
-2
+0
 </index>
 </identifier>
 <symbol> , </symbol>
@@ -712,7 +712,7 @@ int
 arg
 </kind>
 <index>
-3
+1
 </index>
 </identifier>
 <symbol> , </symbol>
@@ -728,7 +728,7 @@ int
 arg
 </kind>
 <index>
-4
+2
 </index>
 </identifier>
 </parameterList>
@@ -752,7 +752,7 @@ int
 arg
 </kind>
 <index>
-3
+1
 </index>
 </identifier>
 </term>
@@ -784,7 +784,7 @@ int
 arg
 </kind>
 <index>
-2
+0
 </index>
 </identifier>
 </term>
@@ -803,7 +803,7 @@ int
 arg
 </kind>
 <index>
-4
+2
 </index>
 </identifier>
 </term>
@@ -825,7 +825,7 @@ int
 arg
 </kind>
 <index>
-3
+1
 </index>
 </identifier>
 <symbol> = </symbol>
@@ -842,7 +842,7 @@ int
 arg
 </kind>
 <index>
-3
+1
 </index>
 </identifier>
 </term>
@@ -866,7 +866,7 @@ int
 arg
 </kind>
 <index>
-2
+0
 </index>
 </identifier>
 <symbol> = </symbol>
@@ -883,7 +883,7 @@ int
 arg
 </kind>
 <index>
-2
+0
 </index>
 </identifier>
 </term>
