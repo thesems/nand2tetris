@@ -56,9 +56,9 @@ impl SymbolTable {
         }
     }
 
-    pub fn type_of(&self, name: &str) -> Option<&str> {
+    pub fn type_of(&self, name: &str) -> Option<String> {
         return match self.vars.get(name) {
-            Some(data) => Some(data.0.as_str()),
+            Some(data) => Some(data.0.clone()),
             None => None
         }
     }

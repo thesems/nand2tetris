@@ -70,7 +70,7 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_class(&mut self) {
         self.xml_writer.write_full_tag("<class>");
-        
+
         // Clear class symbol table
         self.class_symtab.start_subroutine();
 
@@ -188,7 +188,7 @@ impl<'a> CompilationEngine<'a> {
 
     pub fn compile_subroutine_dec(&mut self) {
         self.xml_writer.write_full_tag("<subroutineDec>");
-        
+
         // Clear function symbol table
         self.func_symtab.start_subroutine();
 
@@ -297,7 +297,7 @@ impl<'a> CompilationEngine<'a> {
             .write_function(full_func_name.as_str(), local_count);
 
         if self.current_func_type == "constructor" {
-            let n = self.class_symtab.var_count(&KindType::VAR);
+            let n = self.class_symtab.var_count(&KindType::FIELD);
             self.vm_writer.write_push(Segment::CONSTANT, n);
             self.vm_writer.write_call("Memory.alloc", 1);
             self.vm_writer.write_pop(Segment::POINTER, 0);
@@ -544,7 +544,7 @@ impl<'a> CompilationEngine<'a> {
             self.print_compile_error("Expected an closing curvy bracket after keyword if.");
         }
         self.write_token();
-        
+
         self.vm_writer.write_goto(end_label.as_str());
         self.vm_writer.write_label(iff_label.as_str());
 
@@ -639,6 +639,38 @@ impl<'a> CompilationEngine<'a> {
         );
 
         let mut func_name = self.tokenizer.token.clone();
+        let mut index: u16 = 0;
+        let mut kind_type = KindType::VAR;
+        let func_type = self
+            .class_symtab
+            .type_of(func_name.as_str())
+            .unwrap_or_else(|| {
+                return self
+                    .func_symtab
+                    .type_of(self.tokenizer.token.as_str())
+                    .unwrap_or("".to_string());
+            });
+        if func_type != "" {
+            func_name = func_type.clone();
+            index = self
+                .class_symtab
+                .index_of(self.tokenizer.token.as_str())
+                .unwrap_or_else(|| {
+                    return self
+                        .func_symtab
+                        .index_of(self.tokenizer.token.as_str())
+                        .unwrap();
+                });
+            kind_type = self
+                .class_symtab
+                .kind_of(self.tokenizer.token.as_str())
+                .unwrap_or_else(|| {
+                    return self
+                        .func_symtab
+                        .kind_of(self.tokenizer.token.as_str())
+                        .unwrap();
+                });
+        }
         self.tokenizer.advance();
 
         if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
@@ -663,7 +695,15 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
         self.tokenizer.advance();
 
-        let n = self.compile_expression_list();
+        // VM-Code Generator
+        let mut n = 0;
+        if func_type != "" {
+            let segment = CompilationEngine::kind_to_segment(&kind_type);
+            self.vm_writer.write_push(segment, index);
+            n = 1;
+        }
+
+        n = n + self.compile_expression_list();
 
         // TODO: rewrite whole function to be handled in compile_expression?
         // VM-Code Generator
@@ -783,7 +823,7 @@ impl<'a> CompilationEngine<'a> {
                 KeywordType::This => {
                     self.vm_writer.write_push(Segment::POINTER, 0);
                 }
-                _ => panic!("Should not reach this ever!"), 
+                _ => panic!("Should not reach this ever!"),
             };
 
             self.write_token();
@@ -802,7 +842,7 @@ impl<'a> CompilationEngine<'a> {
                 self.vm_writer.write_call("String.appendChar", 2);
                 self.vm_writer.write_pop(Segment::TEMP, 5);
             }
-                
+
             self.vm_writer.write_push(Segment::TEMP, 5);
             self.write_token();
             safe_exit(self);
@@ -845,7 +885,12 @@ impl<'a> CompilationEngine<'a> {
                 let kind_type = self
                     .func_symtab
                     .kind_of(self.tokenizer.token.as_str())
-                    .unwrap();
+                    .unwrap_or_else(|| {
+                        self.class_symtab
+                            .kind_of(self.tokenizer.token.as_str())
+                            .unwrap()
+                    });
+
                 self._compile_identifier(
                     "Expected an existing variable name.",
                     String::from(typ.unwrap()).as_str(),
@@ -859,7 +904,12 @@ impl<'a> CompilationEngine<'a> {
                 let index = self
                     .func_symtab
                     .index_of(self.tokenizer.token.as_str())
-                    .unwrap();
+                    .unwrap_or_else(|| {
+                        self.class_symtab
+                            .index_of(self.tokenizer.token.as_str())
+                            .unwrap()
+                    });
+
                 self.vm_writer.write_push(segment, index);
             } else {
                 // function/method/constructor
@@ -991,9 +1041,16 @@ impl<'a> CompilationEngine<'a> {
 
         if complex_identifier {
             let index = self
-                .func_symtab
+                .class_symtab
                 .index_of(self.tokenizer.token.as_str())
-                .unwrap();
+                .unwrap_or_else(|| {
+                    self.func_symtab
+                        .index_of(self.tokenizer.token.as_str())
+                        .unwrap_or_else(|| {
+                            self.print_compile_error(message);
+                            0
+                        })
+                });
 
             self.xml_writer.write_full_tag("<identifier>");
             self.xml_writer.write_full_tag("<name>");
