@@ -189,7 +189,7 @@
 <identifier> fillMemory </identifier>
 <symbol> ( </symbol>
 <keyword> int </keyword>
-<identifier> startAddress </identifier>
+<identifier> address </identifier>
 <symbol> , </symbol>
 <keyword> int </keyword>
 <identifier> length </identifier>
@@ -210,7 +210,7 @@
 <symbol> . </symbol>
 <identifier> poke </identifier>
 <symbol> ( </symbol>
-<identifier> startAddress </identifier>
+<identifier> address </identifier>
 <symbol> , </symbol>
 <identifier> value </identifier>
 <symbol> ) </symbol>
@@ -220,6 +220,22 @@
 <symbol> = </symbol>
 <identifier> length </identifier>
 <symbol> - </symbol>
+<integerConstant> 1 </integerConstant>
+<symbol> ; </symbol>
+<keyword> let </keyword>
+<identifier> address </identifier>
+<symbol> = </symbol>
+<identifier> address </identifier>
+<symbol> + </symbol>
+<integerConstant> 1 </integerConstant>
+<symbol> ; </symbol>
+<symbol> } </symbol>
+<keyword> return </keyword>
+<symbol> ; </symbol>
+<symbol> } </symbol>
+<symbol> } </symbol>
+</tokens>
+- </symbol>
 <integerConstant> 1 </integerConstant>
 <symbol> ; </symbol>
 <keyword> let </keyword>

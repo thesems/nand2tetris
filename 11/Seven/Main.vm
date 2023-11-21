@@ -1,4 +1,4 @@
-function Main.main 0
+function Main.main 2
 push constant 1
 push constant 2
 push constant 3
@@ -6,5 +6,48 @@ call Math.multiply 2
 add
 call Output.printInt 1
 pop temp 0
+push constant 42
+pop local 0
+push local 0
+call Main.fuckup 0
+eq
+not
+if-goto L1-0
+push constant 2
+call String.new 1
+pop temp 5
+push temp 5
+push constant 104
+call String.appendChar 2
+pop temp 5
+push temp 5
+push constant 105
+call String.appendChar 2
+pop temp 5
+push temp 5
+call Output.printString 1
+pop temp 0
+goto L2-0
+label L1-0
+push constant 2
+call String.new 1
+pop temp 5
+push temp 5
+push constant 110
+call String.appendChar 2
+pop temp 5
+push temp 5
+push constant 111
+call String.appendChar 2
+pop temp 5
+push temp 5
+call Output.printString 1
+pop temp 0
+label L2-0
 push constant 0
+return
+function Main.fuckup 0
+push constant 2
+push constant 21
+call Math.multiply 2
 return

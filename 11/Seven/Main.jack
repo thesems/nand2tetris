@@ -10,8 +10,21 @@
 class Main {
 
    function void main() {
+      var int x;
+      var bool y;
+
       do Output.printInt(1 + (2 * 3));
+      let x = 42;
+      if (x = Main.fuckup()) {
+        do Output.printString("hi");
+      }
+      else {
+        do Output.printString("no");
+      }
       return;
    }
 
+    function int fuckup() {
+        return 2 * 21;
+    }
 }

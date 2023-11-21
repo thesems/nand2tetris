@@ -12,6 +12,44 @@
 <symbol> ) </symbol>
 <subroutineBody>
 <symbol> { </symbol>
+<varDec>
+<keyword> var </keyword>
+<keyword> int </keyword>
+<identifier>
+<name>
+x
+</name>
+<typ>
+int
+</typ>
+<kind>
+var
+</kind>
+<index>
+0
+</index>
+</identifier>
+<symbol> ; </symbol>
+</varDec>
+<varDec>
+<keyword> var </keyword>
+<identifier> bool </identifier>
+<identifier>
+<name>
+y
+</name>
+<typ>
+bool
+</typ>
+<kind>
+var
+</kind>
+<index>
+1
+</index>
+</identifier>
+<symbol> ; </symbol>
+</varDec>
 <statements>
 <doStatement>
 <keyword> do </keyword>
@@ -43,6 +81,104 @@
 <symbol> ) </symbol>
 <symbol> ; </symbol>
 </doStatement>
+<letStatement>
+<keyword> let </keyword>
+<identifier>
+<name>
+x
+</name>
+<typ>
+int
+</typ>
+<kind>
+var
+</kind>
+<index>
+0
+</index>
+</identifier>
+<symbol> = </symbol>
+<expression>
+<term>
+<integerConstant> 42 </integerConstant>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
+<ifStatement>
+<keyword> if </keyword>
+<symbol> ( </symbol>
+<expression>
+<term>
+<identifier>
+<name>
+x
+</name>
+<typ>
+int
+</typ>
+<kind>
+var
+</kind>
+<index>
+0
+</index>
+</identifier>
+</term>
+<symbol> = </symbol>
+<term>
+<identifier> Main </identifier>
+<symbol> . </symbol>
+<identifier> fuckup </identifier>
+<symbol> ( </symbol>
+<expressionList>
+</expressionList>
+<symbol> ) </symbol>
+</term>
+</expression>
+<symbol> ) </symbol>
+<symbol> { </symbol>
+<statements>
+<doStatement>
+<keyword> do </keyword>
+<identifier> Output </identifier>
+<symbol> . </symbol>
+<identifier> printString </identifier>
+<symbol> ( </symbol>
+<expressionList>
+<expression>
+<term>
+<stringConstant> hi </stringConstant>
+</term>
+</expression>
+</expressionList>
+<symbol> ) </symbol>
+<symbol> ; </symbol>
+</doStatement>
+</statements>
+<symbol> } </symbol>
+<keyword> else </keyword>
+<symbol> { </symbol>
+<statements>
+<doStatement>
+<keyword> do </keyword>
+<identifier> Output </identifier>
+<symbol> . </symbol>
+<identifier> printString </identifier>
+<symbol> ( </symbol>
+<expressionList>
+<expression>
+<term>
+<stringConstant> no </stringConstant>
+</term>
+</expression>
+</expressionList>
+<symbol> ) </symbol>
+<symbol> ; </symbol>
+</doStatement>
+</statements>
+<symbol> } </symbol>
+</ifStatement>
 <returnStatement>
 <keyword> return </keyword>
 <symbol> ; </symbol>
@@ -51,5 +187,36 @@
 <symbol> } </symbol>
 </subroutineBody>
 </subroutineDec>
+<subroutineDec>
+<keyword> function </keyword>
+<keyword> int </keyword>
+<identifier> fuckup </identifier>
+<symbol> ( </symbol>
+<parameterList>
+</parameterList>
+<symbol> ) </symbol>
+<subroutineBody>
+<symbol> { </symbol>
+<statements>
+<returnStatement>
+<keyword> return </keyword>
+<expression>
+<term>
+<integerConstant> 2 </integerConstant>
+</term>
+<symbol> * </symbol>
+<term>
+<integerConstant> 21 </integerConstant>
+</term>
+</expression>
+<symbol> ; </symbol>
+</returnStatement>
+</statements>
+<symbol> } </symbol>
+</subroutineBody>
+</subroutineDec>
+<symbol> } </symbol>
+</class>
+subroutineDec>
 <symbol> } </symbol>
 </class>

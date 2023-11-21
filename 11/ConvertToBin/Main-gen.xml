@@ -687,7 +687,7 @@ arg
 <keyword> int </keyword>
 <identifier>
 <name>
-startAddress
+address
 </name>
 <typ>
 int
@@ -775,7 +775,7 @@ arg
 <term>
 <identifier>
 <name>
-startAddress
+address
 </name>
 <typ>
 int
@@ -848,6 +848,66 @@ arg
 </term>
 <symbol> - </symbol>
 <term>
+<integerConstant> 1 </integerConstant>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
+<letStatement>
+<keyword> let </keyword>
+<identifier>
+<name>
+address
+</name>
+<typ>
+int
+</typ>
+<kind>
+arg
+</kind>
+<index>
+0
+</index>
+</identifier>
+<symbol> = </symbol>
+<expression>
+<term>
+<identifier>
+<name>
+address
+</name>
+<typ>
+int
+</typ>
+<kind>
+arg
+</kind>
+<index>
+0
+</index>
+</identifier>
+</term>
+<symbol> + </symbol>
+<term>
+<integerConstant> 1 </integerConstant>
+</term>
+</expression>
+<symbol> ; </symbol>
+</letStatement>
+</statements>
+<symbol> } </symbol>
+</whileStatement>
+<returnStatement>
+<keyword> return </keyword>
+<symbol> ; </symbol>
+</returnStatement>
+</statements>
+<symbol> } </symbol>
+</subroutineBody>
+</subroutineDec>
+<symbol> } </symbol>
+</class>
+>
 <integerConstant> 1 </integerConstant>
 </term>
 </expression>

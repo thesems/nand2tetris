@@ -17,6 +17,7 @@ pub struct CompilationEngine<'a> {
     while_counter: u16,
     current_class: String,
     current_func: String,
+    current_func_type: String,
 }
 
 impl<'a> CompilationEngine<'a> {
@@ -36,6 +37,7 @@ impl<'a> CompilationEngine<'a> {
             while_counter: 0,
             current_class: String::from(""),
             current_func: String::from(""),
+            current_func_type: String::from(""),
         })
     }
 
@@ -197,6 +199,7 @@ impl<'a> CompilationEngine<'a> {
             self.print_compile_error("Expected a keyword: constructor, function or method.");
         }
         self.write_token();
+        self.current_func_type = self.tokenizer.token.clone();
 
         self.tokenizer.advance();
         let allowed_keywords = vec!["void", "int", "char", "boolean"];
@@ -292,6 +295,16 @@ impl<'a> CompilationEngine<'a> {
         full_func_name.push_str(self.current_func.as_str());
         self.vm_writer
             .write_function(full_func_name.as_str(), local_count);
+
+        if self.current_func_type == "constructor" {
+            let n = self.class_symtab.var_count(&KindType::VAR);
+            self.vm_writer.write_push(Segment::CONSTANT, n);
+            self.vm_writer.write_call("Memory.alloc", 1);
+            self.vm_writer.write_pop(Segment::POINTER, 0);
+        } else if self.current_func_type == "method" {
+            self.vm_writer.write_push(Segment::ARGUMENT, 0);
+            self.vm_writer.write_pop(Segment::POINTER, 0);
+        }
 
         self.compile_statements();
 
@@ -511,12 +524,12 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         // VM-Code Generation
-        let l1_label = format!("L1-{}", self.if_counter);
-        let l2_label = format!("L1-{}", self.if_counter + 1);
-        self.if_counter = self.if_counter + 2;
+        let iff_label = format!("IF_FALSE{}", self.if_counter);
+        let end_label = format!("IF_END{}", self.if_counter);
+        self.if_counter = self.if_counter + 1;
 
         self.vm_writer.write_arithmetic(Operation::NOT);
-        self.vm_writer.write_if(l1_label.as_str());
+        self.vm_writer.write_if(iff_label.as_str());
 
         self.tokenizer.advance();
         if self.tokenizer.token != "{" || self.tokenizer.token_type() != TokenType::Symbol {
@@ -527,14 +540,13 @@ impl<'a> CompilationEngine<'a> {
         self.tokenizer.advance();
         self.compile_statements();
 
-        // VM-Code Generation
-        self.vm_writer.write_goto(l2_label.as_str());
-        self.vm_writer.write_label(l1_label.as_str());
-
         if self.tokenizer.token != "}" || self.tokenizer.token_type() != TokenType::Symbol {
             self.print_compile_error("Expected an closing curvy bracket after keyword if.");
         }
         self.write_token();
+        
+        self.vm_writer.write_goto(end_label.as_str());
+        self.vm_writer.write_label(iff_label.as_str());
 
         self.tokenizer.advance();
         if self.tokenizer.token_type() == TokenType::Keyword
@@ -559,7 +571,7 @@ impl<'a> CompilationEngine<'a> {
         }
 
         // VM-Code Generation
-        self.vm_writer.write_label(l2_label.as_str());
+        self.vm_writer.write_label(end_label.as_str());
 
         self.xml_writer.write_full_tag("</ifStatement>");
     }
@@ -575,8 +587,8 @@ impl<'a> CompilationEngine<'a> {
         self.write_token();
 
         // VM-Code Generation
-        let l1 = format!("WHILE-{}", self.while_counter);
-        let l2 = format!("WHILE-{}", self.while_counter + 1);
+        let l1 = format!("WHILE_EXP{}", self.while_counter);
+        let l2 = format!("WHILE_END{}", self.while_counter);
         self.while_counter = self.while_counter + 1;
         self.vm_writer.write_label(l1.as_str());
 
@@ -762,13 +774,16 @@ impl<'a> CompilationEngine<'a> {
             // VM-Code Generator
             match self.tokenizer.keyword() {
                 KeywordType::True => {
-                    self.vm_writer.write_push(Segment::CONSTANT, 1);
+                    self.vm_writer.write_push(Segment::CONSTANT, 0);
                     self.vm_writer.write_arithmetic(Operation::NOT);
                 }
-                KeywordType::False => {
+                KeywordType::False | KeywordType::Null => {
                     self.vm_writer.write_push(Segment::CONSTANT, 0);
                 }
-                _ => panic!("Should not reach this ever!"), // TODO: handle null and this?
+                KeywordType::This => {
+                    self.vm_writer.write_push(Segment::POINTER, 0);
+                }
+                _ => panic!("Should not reach this ever!"), 
             };
 
             self.write_token();
@@ -882,7 +897,6 @@ impl<'a> CompilationEngine<'a> {
             self.tokenizer.advance();
             self.compile_expression_list();
 
-            self.tokenizer.advance();
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
                 self.print_compile_error("Expected a closing bracket after expression list.");
             }
@@ -910,13 +924,13 @@ impl<'a> CompilationEngine<'a> {
             self.tokenizer.advance();
             let n = self.compile_expression_list();
 
-            // VM-Code Generation
-            self.vm_writer.write_call(func_name.as_str(), n);
-
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
                 self.print_compile_error("Expected a closing bracket after expression list.");
             }
             self.write_token();
+
+            // VM-Code Generation
+            self.vm_writer.write_call(func_name.as_str(), n);
         } else {
             self.xml_writer.write_full_tag("</term>");
             return;
