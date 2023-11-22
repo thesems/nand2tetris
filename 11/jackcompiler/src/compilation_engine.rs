@@ -642,37 +642,38 @@ impl<'a> CompilationEngine<'a> {
         let mut index: u16 = 0;
         let mut kind_type = KindType::VAR;
         let func_type = self
-            .class_symtab
+            .func_symtab
             .type_of(func_name.as_str())
             .unwrap_or_else(|| {
                 return self
-                    .func_symtab
+                    .class_symtab
                     .type_of(self.tokenizer.token.as_str())
                     .unwrap_or("".to_string());
             });
         if func_type != "" {
             func_name = func_type.clone();
             index = self
-                .class_symtab
+                .func_symtab
                 .index_of(self.tokenizer.token.as_str())
                 .unwrap_or_else(|| {
                     return self
-                        .func_symtab
+                        .class_symtab
                         .index_of(self.tokenizer.token.as_str())
                         .unwrap();
                 });
             kind_type = self
-                .class_symtab
+                .func_symtab
                 .kind_of(self.tokenizer.token.as_str())
                 .unwrap_or_else(|| {
                     return self
-                        .func_symtab
+                        .class_symtab
                         .kind_of(self.tokenizer.token.as_str())
                         .unwrap();
                 });
         }
         self.tokenizer.advance();
 
+        let mut is_class_defined: bool = false;
         if self.tokenizer.token_type() == TokenType::Symbol && self.tokenizer.token == "." {
             self.write_token();
 
@@ -687,6 +688,7 @@ impl<'a> CompilationEngine<'a> {
             func_name.push('.');
             func_name.push_str(self.tokenizer.token.as_str());
             self.tokenizer.advance();
+            is_class_defined = true;
         }
 
         if self.tokenizer.token_type() != TokenType::Symbol && self.tokenizer.token != "(" {
@@ -701,6 +703,17 @@ impl<'a> CompilationEngine<'a> {
             let segment = CompilationEngine::kind_to_segment(&kind_type);
             self.vm_writer.write_push(segment, index);
             n = 1;
+        }
+
+        if !is_class_defined {
+            let mut full_func_name = String::from("");
+            full_func_name.push_str(self.current_class.as_str());
+            full_func_name.push_str(".");
+            full_func_name.push_str(func_name.as_str());
+            func_name = full_func_name;
+
+            self.vm_writer.write_push(Segment::POINTER, 0);
+            n = n + 1;
         }
 
         n = n + self.compile_expression_list();
@@ -793,7 +806,8 @@ impl<'a> CompilationEngine<'a> {
 
         let keyword_constants = vec!["true", "false", "null", "this"];
         let unary_op = vec!["-", "~"];
-        let mut func_name = String::from(""); // in case it is a function call
+        let mut func_name = String::from("");
+        let mut iden_type = String::from("");
 
         let safe_exit = |s: &mut CompilationEngine| {
             s.xml_writer.write_full_tag("</term>");
@@ -876,12 +890,12 @@ impl<'a> CompilationEngine<'a> {
             safe_exit(self);
             return;
         } else if self.tokenizer.token_type() == TokenType::Identifier {
-            let mut typ = self.func_symtab.type_of(self.tokenizer.token.as_str());
-            if typ.is_none() {
-                typ = self.class_symtab.type_of(self.tokenizer.token.as_str());
-            }
-
-            if typ.is_some() {
+            iden_type = self.func_symtab.type_of(self.tokenizer.token.as_str()).unwrap_or_else(
+                || {
+                    self.class_symtab.type_of(self.tokenizer.token.as_str()).unwrap_or("".to_string())
+                }
+            );
+            if iden_type != "" {
                 let kind_type = self
                     .func_symtab
                     .kind_of(self.tokenizer.token.as_str())
@@ -893,7 +907,7 @@ impl<'a> CompilationEngine<'a> {
 
                 self._compile_identifier(
                     "Expected an existing variable name.",
-                    String::from(typ.unwrap()).as_str(),
+                    String::from(iden_type.clone()).as_str(),
                     &kind_type,
                     true,
                     false,
@@ -961,6 +975,10 @@ impl<'a> CompilationEngine<'a> {
                 false,
                 false,
             );
+
+            if iden_type != "" {
+                func_name = iden_type;
+            }
 
             func_name.push('.');
             func_name.push_str(self.tokenizer.token.as_str());
