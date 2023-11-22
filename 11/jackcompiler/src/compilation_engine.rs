@@ -200,6 +200,9 @@ impl<'a> CompilationEngine<'a> {
         }
         self.write_token();
         self.current_func_type = self.tokenizer.token.clone();
+        if self.current_func_type == "method" {
+            self.func_symtab.define("this", self.current_class.as_str(), KindType::ARG);
+        }
 
         self.tokenizer.advance();
         let allowed_keywords = vec!["void", "int", "char", "boolean"];
@@ -976,8 +979,10 @@ impl<'a> CompilationEngine<'a> {
                 false,
             );
 
+            let mut n = 0;
             if iden_type != "" {
                 func_name = iden_type;
+                n = 1;
             }
 
             func_name.push('.');
@@ -990,7 +995,7 @@ impl<'a> CompilationEngine<'a> {
             self.write_token();
 
             self.tokenizer.advance();
-            let n = self.compile_expression_list();
+            n = n + self.compile_expression_list();
 
             if self.tokenizer.token_type() != TokenType::Symbol || self.tokenizer.token != ")" {
                 self.print_compile_error("Expected a closing bracket after expression list.");
