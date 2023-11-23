@@ -478,8 +478,6 @@ impl<'a> CompilationEngine<'a> {
                 self.print_compile_error("Expected an equal '=' symbol after variable name.");
             }
             self.write_token();
-
-            // TODO: handle let arrays indexing compilation
         } else if self.tokenizer.token == "=" {
             self.write_token();
         } else {
