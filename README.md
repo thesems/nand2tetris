@@ -30,5 +30,9 @@ Cousera link: https://www.coursera.org/learn/nand2tetris2
     * Game in Jack language: Snake. Eat mice and grow!
     * https://github.com/thesems/nand2tetris/tree/main/09/Snake
 * Project 10: Compiler I - Syntax Analysis  
-* Project 11: Compiler II - Code Generation  
-* Project 12: Operating System  
+    * Analyzer consists of a tokenizer and parser.
+    * https://github.com/thesems/nand2tetris/tree/main/10/jackanalyzer
+* Project 11: Compiler II - Code Generation
+    * Compiler translates the parsed files into VM code.
+    * https://github.com/thesems/nand2tetris/tree/main/11/jackcompiler
+* Project 12: Operating System 
