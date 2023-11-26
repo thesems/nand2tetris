@@ -255,11 +255,13 @@ push local 0
 add
 neg
 return
+goto IF_END3
 label IF_FALSE3
 push local 0
 push local 0
 add
 return
+label IF_END3
 goto IF_END2
 label IF_FALSE2
 push local 1
@@ -274,6 +276,7 @@ push constant 1
 add
 neg
 return
+goto IF_END4
 label IF_FALSE4
 push local 0
 push local 0
@@ -281,9 +284,69 @@ add
 push constant 1
 add
 return
+label IF_END4
 label IF_END2
-function Math.sqrt 0
+function Math.sqrt 3
+push constant 0
+pop local 0
+push constant 7
+pop local 1
+label WHILE_EXP0
+push local 1
+push constant 0
+gt
+push local 1
+push constant 0
+eq
+or
+not
+if-goto WHILE_END0
+push local 0
+push local 1
+push static 0
+add
+pop pointer 1
+push that 0
+add
+push local 0
+push local 1
+push static 0
+add
+pop pointer 1
+push that 0
+add
+call Math.multiply 2
+pop local 2
+push local 2
 push argument 0
+lt
+push local 2
+push argument 0
+eq
+or
+push local 2
+push constant 0
+gt
+and
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push local 0
+push local 1
+push static 0
+add
+pop pointer 1
+push that 0
+add
+pop local 0
+label IF_FALSE0
+push local 1
+push constant 1
+sub
+pop local 1
+goto WHILE_EXP0
+label WHILE_END0
+push local 0
 return
 function Math.max 0
 push argument 0
