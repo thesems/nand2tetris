@@ -136,4 +136,8 @@ class Math {
     function bool bit(int x, int i) {
         return x & twoToThe[i];
     }
+
+    function int power_of_two(int x) {
+        return twoToThe[x];
+    }
 }
